@@ -1,0 +1,170 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:tid-kopru:schemas:tid-content-v1",
+  "title": "Reviewed TİD translation content bundle",
+  "description": "A content contract. Passing structural validation does not establish linguistic quality or legal rights.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "contentVersion", "entries"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "contentVersion": { "type": "string", "minLength": 1 },
+    "entries": { "type": "array", "items": { "$ref": "#/$defs/entry" } }
+  },
+  "$defs": {
+    "nonEmptyText": { "type": "string", "minLength": 1 },
+    "entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "source", "translation", "review", "media", "scope", "playable"],
+      "properties": {
+        "id": { "$ref": "#/$defs/nonEmptyText" },
+        "source": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["text", "locale"],
+          "properties": {
+            "text": { "$ref": "#/$defs/nonEmptyText" },
+            "locale": { "const": "tr-TR" }
+          }
+        },
+        "translation": {
+          "type": "object",
+          "additionalProperties": true,
+          "required": ["glossText", "glosses"],
+          "properties": {
+            "glossText": { "$ref": "#/$defs/nonEmptyText" },
+            "glosses": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/nonEmptyText" } },
+            "variant": { "$ref": "#/$defs/nonEmptyText" },
+            "tidNotes": { "type": "string" }
+          }
+        },
+        "review": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["status", "reviewerCodes", "approvals", "disagreement", "adjudication"],
+          "properties": {
+            "status": { "enum": ["candidate", "approved", "rejected"] },
+            "reviewerCodes": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/nonEmptyText" } },
+            "approvals": { "type": "array", "items": { "$ref": "#/$defs/approval" } },
+            "disagreement": { "type": "boolean" },
+            "adjudication": {
+              "oneOf": [
+                { "type": "null" },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["reviewerCode", "resolution"],
+                  "properties": {
+                    "reviewerCode": { "$ref": "#/$defs/nonEmptyText" },
+                    "resolution": { "$ref": "#/$defs/nonEmptyText" }
+                  }
+                }
+              ]
+            }
+          },
+          "allOf": [
+            {
+              "if": { "properties": { "status": { "const": "approved" } }, "required": ["status"] },
+              "then": {
+                "properties": {
+                  "reviewerCodes": { "minItems": 2, "maxItems": 2 },
+                  "approvals": {
+                    "minItems": 2,
+                    "maxItems": 2,
+                    "items": {
+                      "allOf": [
+                        { "$ref": "#/$defs/approval" },
+                        { "properties": { "decision": { "const": "approve" }, "independent": { "const": true } } }
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "if": { "properties": { "disagreement": { "const": true } }, "required": ["disagreement"] },
+              "then": { "properties": { "adjudication": { "type": "object" } } },
+              "else": { "properties": { "adjudication": { "type": "null" } } }
+            }
+          ]
+        },
+        "media": {
+          "oneOf": [
+            { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/textOnly" } },
+            { "type": "array", "minItems": 1, "items": { "oneOf": [{ "$ref": "#/$defs/videoSegment" }, { "$ref": "#/$defs/avatarSegment" }] } }
+          ]
+        },
+        "scope": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/nonEmptyText" } },
+        "playable": { "type": "boolean" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "playable": { "const": true } }, "required": ["playable"] },
+          "then": {
+            "properties": {
+              "review": { "properties": { "status": { "const": "approved" } }, "required": ["status"] },
+              "media": { "contains": { "oneOf": [{ "$ref": "#/$defs/videoSegment" }, { "$ref": "#/$defs/avatarSegment" }] } }
+            }
+          }
+        }
+      ]
+    },
+    "approval": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reviewerCode", "decision", "independent"],
+      "properties": {
+        "reviewerCode": { "$ref": "#/$defs/nonEmptyText" },
+        "decision": { "enum": ["approve", "reject"] },
+        "independent": { "type": "boolean" }
+      }
+    },
+    "textOnly": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "glossRef"],
+      "properties": { "kind": { "const": "text_only" }, "glossRef": { "$ref": "#/$defs/nonEmptyText" } }
+    },
+    "videoSegment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "assetId", "startMs", "endMs", "glossStart", "glossEnd", "nonManual"],
+      "properties": {
+        "kind": { "const": "video" },
+        "assetId": { "$ref": "#/$defs/nonEmptyText" },
+        "startMs": { "type": "integer", "minimum": 0 },
+        "endMs": { "type": "integer", "minimum": 1 },
+        "glossStart": { "type": "integer", "minimum": 0 },
+        "glossEnd": { "type": "integer", "minimum": 1 },
+        "nonManual": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/nonManualInterval" } }
+      }
+    },
+    "avatarSegment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "assetId", "animationId", "startMs", "endMs", "glossStart", "glossEnd", "nonManual"],
+      "properties": {
+        "kind": { "const": "avatar" },
+        "assetId": { "$ref": "#/$defs/nonEmptyText" },
+        "animationId": { "$ref": "#/$defs/nonEmptyText" },
+        "startMs": { "type": "integer", "minimum": 0 },
+        "endMs": { "type": "integer", "minimum": 1 },
+        "glossStart": { "type": "integer", "minimum": 0 },
+        "glossEnd": { "type": "integer", "minimum": 1 },
+        "nonManual": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/nonManualInterval" } }
+      }
+    },
+    "nonManualInterval": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["startMs", "endMs", "face", "head"],
+      "properties": {
+        "startMs": { "type": "integer", "minimum": 0 },
+        "endMs": { "type": "integer", "minimum": 1 },
+        "face": { "$ref": "#/$defs/nonEmptyText" },
+        "head": { "$ref": "#/$defs/nonEmptyText" }
+      }
+    }
+  }
+}
