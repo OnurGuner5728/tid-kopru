@@ -85,6 +85,7 @@ function recordMetadata(overrides = {}) {
     utteranceId: 'UTT_0001',
     signerCode: 'S01',
     consentCode: 'C01',
+    sampleKind: 'SIGN',
     scopeId: 'PILOT_1',
     fps: 30,
     conditions: { ...manifest.conditions },

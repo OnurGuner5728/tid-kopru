@@ -48,6 +48,7 @@ def utterance_record(**overrides):
         "fps": 30,
         "frames": [frame(0), frame(1000)],
         "glossEvents": [event()],
+        "sampleKind": "SIGN",
         "conditions": {
             "lightingCode": "indoor",
             "distanceCode": "medium",
@@ -120,6 +121,16 @@ class ValidateUtterancesTests(unittest.TestCase):
             utterance_record(glossEvents=[event("BROW_RAISE", channel="nonManual")])
         ], SIGNERS, GLOSSES)
         self.assertIn("invalid_gloss_event", errors)
+
+    def test_blank_reject_sample_has_no_gloss_targets(self):
+        record = utterance_record(sampleKind="BLANK", glossEvents=[])
+        self.assertEqual(validate_utterances([record], SIGNERS, GLOSSES), [])
+
+    def test_reject_sample_with_a_gloss_target_is_rejected(self):
+        errors = validate_utterances([
+            utterance_record(sampleKind="UNKNOWN", glossEvents=[event()])
+        ], SIGNERS, GLOSSES)
+        self.assertIn("reject_sample_has_gloss", errors)
 
     def test_nonfinite_landmark_is_rejected(self):
         bad_frame = frame(0)

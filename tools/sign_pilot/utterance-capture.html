@@ -55,6 +55,7 @@
     <div class="grid">
       <div><label for="signer">İşaretçi kodu</label><select id="signer" disabled></select></div>
       <div><label for="consent">Onam kodu</label><select id="consent" disabled></select></div>
+      <div><label for="sample-kind">Örnek türü</label><select id="sample-kind" disabled></select></div>
       <div><label for="lighting">Işık koşulu</label><select id="lighting" disabled></select></div>
       <div><label for="distance">Kamera uzaklığı</label><select id="distance" disabled></select></div>
       <div><label for="background">Arka plan</label><select id="background" disabled></select></div>
@@ -72,7 +73,7 @@
     <textarea id="gloss-events" spellcheck="false" placeholder='[{"glossId":"...","startMs":0,"endMs":500,"dominantHand":"right","nonManual":[],"channel":"manual"}]'></textarea>
     <button id="align" disabled>Glossları doğrula ve hizala</button>
     <button id="export" disabled>Landmark ve gloss JSONL'ini indir</button>
-    <p class="small">Elle ve non-manual (yüz/baş/gövde) olaylarının örtüşmesi için iki olayda da aynı açık parallelGroup kodu bulunmalıdır. Ham video JSONL'e girmez.</p>
+    <p class="small">SIGN örneğinde gloss gerekir. BLANK, UNKNOWN ve PARTIAL örneklerinde gloss hedefi boş kalır. Elle ve non-manual (yüz/baş/gövde) olaylarının örtüşmesi için iki olayda da aynı açık parallelGroup kodu bulunmalıdır. Ham video JSONL'e girmez.</p>
   </section>
 
   <script type="module" src="./utterance-capture.mjs"></script>

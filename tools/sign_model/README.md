@@ -101,3 +101,24 @@ D:\tid-kopru-private\venv\Scripts\python.exe -m tools.sign_model.export_onnx `
 Bu komut şimdi çalıştırılmamalıdır: gerçek onaylı veri, Android ölçümü ve doğrulanmış MediaPipe varlık hakları henüz yoktur. Ana PWA'da kamera ile işaret tanıma kapalı kalmalıdır. Kod testleri yalnız sentetik biçim/aritmetik kontrolleridir; bunlar TİD doğruluğu, gerçek kullanıcı başarısı veya Android performansı kanıtlamaz.
 
 Odaklı birim kontrolleri proje kökünde `python -m unittest discover -s tests -p test_sign_model_pipeline.py -v` ile çalıştırılır.
+
+## Cümle düzeyi gloss dizisi hattı
+
+`sequence_data.py`, sürüm 2 utterance kayıtlarını signer bazında train/validation/test bölümlerine ayırır; aynı signer veya aynı landmark klibi birden fazla bölüme giremez. Her bölümde `SIGN`, `BLANK`, `UNKNOWN` ve `PARTIAL` örnekleri bulunmalıdır. Gloss listesi cümle veri kümesinin onaylı söz varlığıdır; sabit 20 işaretlik izole pilot sınıflandırıcısına bağlı değildir. İfade sırası ve paralel el/yüz zamanları kayıtta tutulur, model yalnızca gloss olayları üretir.
+
+`preprocess_utterance` sabit uzunlukta zaman dizisi üretir; görünürlük maskelerini ve göreli zamanı korur. Eğitim ölçeklemesi yalnız görünür koordinatlardan ve yalnız train bölümünden hesaplanır. Aynı scaler ONNX grafiğine eklenir. `preprocessHash`, MediaPipe sözleşme hash'inden ayrı olarak sıralı feature adlarını, frame sayısını ve yeniden örnekleme algoritması sürümünü bağlar.
+
+`train_sequence.py` gerçek eğitimi ancak onay manifesti, onamlı JSONL, uygun veri doğrulaması ve Git dışındaki çıktı yolu varsa başlatır. Eğitim komutu yalnız yerel ve özel veri hazır olduğunda çalıştırılmalıdır:
+
+```powershell
+python -m tools.sign_model.train_sequence `
+  --dataset D:\tid-kopru-private\consented-utterances.jsonl `
+  --approval-manifest D:\tid-kopru-private\sequence-approval-manifest.json `
+  --output D:\tid-kopru-private\tid-gloss-sequence.pt
+```
+
+`evaluate_sequence.py` gloss dizisi edit uzaklığını, tam eşleşmeyi, gloss precision/recall değerlerini ve `BLANK`/`UNKNOWN`/`PARTIAL` yanlış kabul oranlarını hesaplar. Güven eşiği yalnız validation bölümünde seçilir. Değerlendirme raporu test signer sayısını ve Android ölçüm dosyası, veri, checkpoint ve split parmak izlerini bağlar.
+
+ONNX dışa aktarma için en az 300 held-out utterance, eğitimde bulunmayan en az 20 test signeri, iki bağımsız TİD değerlendiricisiyle adjudication sonrası en az %90 anlamsal kabul, üç ret sınıfının her birinde en fazla %5 yanlış kabul, gerçek Android ölçümü ve eşleşen model/ön işleme/runtime hashleri gerekir. Dışa aktarma scaler'ı, feature sırasını, frame sayısını, gloss sözlüğünü ve validation'da kalibre edilmiş güven eşiğini manifestte taşır. Bu koşullardan biri yoksa model üretimi kapalıdır.
+
+Bu çalışma alanında onamlı utterance veri kümesi, 20+ görülmemiş test katılımcısı, bağımsız insan değerlendirmesi, Android ölçüm raporu veya eğitilmiş cümle modeli bulunmuyor. Dolayısıyla yeni testler yalnız sentetik sözleşme ve matematik kontrolleridir; gerçek TİD çevirisini veya kamera üzerinden kullanılabilirliği kanıtlamaz. Bu kaynaklar sağlanana kadar ana uygulama kamera yönünü kapalı tutmalıdır.

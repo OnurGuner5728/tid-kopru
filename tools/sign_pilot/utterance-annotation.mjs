@@ -2,7 +2,7 @@ const CODE = /^[A-Za-z0-9_-]{1,32}$/;
 const SHA256 = /^[a-f0-9]{64}$/i;
 const RECORD_FIELDS = new Set([
   'schemaVersion', 'utteranceId', 'signerCode', 'consentCode', 'scopeId', 'fps', 'frames',
-  'glossEvents', 'conditions', 'preprocessVersion', 'captureContractSha256',
+  'glossEvents', 'sampleKind', 'conditions', 'preprocessVersion', 'captureContractSha256',
 ]);
 const FRAME_FIELDS = new Set([
   'timestampMs', 'pose', 'poseVisibility', 'leftHand', 'leftHandVisibility',
@@ -116,6 +116,7 @@ export function validateUtteranceRecord(record, manifest) {
   if (hasPersonalKey(record)) add(errors, 'personal_data_field');
   if (!checkExact(record, RECORD_FIELDS, [...RECORD_FIELDS], errors)) return errors;
   if (record.schemaVersion !== 2) add(errors, 'unsupported_schema');
+  if (!['SIGN', 'BLANK', 'UNKNOWN', 'PARTIAL'].includes(record.sampleKind)) add(errors, 'invalid_sample_kind');
   for (const field of ['utteranceId', 'signerCode', 'consentCode', 'scopeId', 'preprocessVersion']) {
     if (typeof record[field] !== 'string' || !CODE.test(record[field])) {
       add(errors, field === 'consentCode' ? 'missing_consent' : `invalid_${field[0].toLowerCase()}${field.slice(1)}`);
@@ -164,8 +165,10 @@ export function validateUtteranceRecord(record, manifest) {
   }
 
   const approvedGlosses = manifest?.approvedGlosses;
-  if (!Array.isArray(record.glossEvents) || !record.glossEvents.length) {
+  if (!Array.isArray(record.glossEvents) || (record.sampleKind === 'SIGN' && !record.glossEvents.length)) {
     add(errors, 'invalid_gloss_events');
+  } else if (['BLANK', 'UNKNOWN', 'PARTIAL'].includes(record.sampleKind) && record.glossEvents.length) {
+    add(errors, 'reject_sample_has_gloss');
   } else if (Array.isArray(record.frames) && record.frames.length >= 2 && record.frames.every((frame) => finite(frame?.timestampMs))) {
     const duration = record.frames.at(-1).timestampMs - record.frames[0].timestampMs;
     let previousStart = -Infinity;

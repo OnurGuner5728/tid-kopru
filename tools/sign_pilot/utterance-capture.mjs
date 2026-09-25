@@ -61,7 +61,8 @@ function assertApprovedCapture(manifest, recordMetadata) {
   if (recordMetadata.scopeId !== manifest.scopeId) throw captureError('invalid_scope');
   if (recordMetadata.preprocessVersion !== manifest.preprocessVersion) throw captureError('preprocess_version_mismatch');
   if (recordMetadata.captureContractSha256 !== manifest.captureContractSha256) throw captureError('invalid_capture_contract');
-  const metadataFields = new Set(['utteranceId', 'signerCode', 'consentCode', 'scopeId', 'fps', 'conditions', 'preprocessVersion', 'captureContractSha256']);
+  if (!['SIGN', 'BLANK', 'UNKNOWN', 'PARTIAL'].includes(recordMetadata.sampleKind)) throw captureError('invalid_sample_kind');
+  const metadataFields = new Set(['utteranceId', 'signerCode', 'consentCode', 'scopeId', 'fps', 'sampleKind', 'conditions', 'preprocessVersion', 'captureContractSha256']);
   if (Object.keys(recordMetadata).some((key) => !metadataFields.has(key))) throw captureError('unknown_field');
   if (!validCode(recordMetadata.utteranceId) || !validCode(recordMetadata.signerCode)
     || !validCode(recordMetadata.consentCode) || !validCode(recordMetadata.scopeId)
@@ -353,6 +354,12 @@ export function createUtteranceCapture(mediaDevices = globalThis.navigator?.medi
 
   function setGlossEvents(events) {
     if (!currentRecord) throw captureError('utterance_not_stopped');
+    if (currentRecord.sampleKind === 'SIGN' && (!Array.isArray(events) || events.length === 0)) {
+      throw captureError('invalid_gloss_events');
+    }
+    if (currentRecord.sampleKind !== 'SIGN' && Array.isArray(events) && events.length > 0) {
+      throw captureError('reject_sample_has_gloss');
+    }
     const duration = currentRecord.frames.length >= 2
       ? currentRecord.frames.at(-1).timestampMs - currentRecord.frames[0].timestampMs
       : 0;
@@ -410,7 +417,7 @@ function mountUtteranceCapturePage(documentObject = globalThis.document) {
   const status = $('status');
   const controls = {
     notice: $('study-notice'), manifestFile: $('study-manifest'), assetsFile: $('asset-manifest'),
-    signer: $('signer'), consent: $('consent'), lighting: $('lighting'), distance: $('distance'),
+    signer: $('signer'), consent: $('consent'), sampleKind: $('sample-kind'), lighting: $('lighting'), distance: $('distance'),
     background: $('background'), video: $('preview'), start: $('start'), stop: $('stop'),
     remove: $('delete'), gloss: $('gloss-events'), align: $('align'), export: $('export'),
   };
@@ -429,7 +436,7 @@ function mountUtteranceCapturePage(documentObject = globalThis.document) {
   }
   function refreshControls() {
     const prepared = studyManifest?.approved === true && assetManifest != null;
-    const selections = [controls.signer, controls.consent, controls.lighting, controls.distance, controls.background]
+    const selections = [controls.signer, controls.consent, controls.sampleKind, controls.lighting, controls.distance, controls.background]
       .every((select) => Boolean(select.value));
     controls.start.disabled = !prepared || !controls.notice.checked || !selections || isCapturing;
     controls.stop.disabled = !isCapturing;
@@ -452,6 +459,7 @@ function mountUtteranceCapturePage(documentObject = globalThis.document) {
   function loadSelections() {
     fillSelect(controls.signer, optionValues(studyManifest?.signers));
     fillSelect(controls.consent, optionValues(studyManifest?.consentCodes));
+    fillSelect(controls.sampleKind, ['SIGN', 'BLANK', 'UNKNOWN', 'PARTIAL']);
     fillSelect(controls.lighting, optionValues(studyManifest?.conditions?.lightingCode));
     fillSelect(controls.distance, optionValues(studyManifest?.conditions?.distanceCode));
     fillSelect(controls.background, optionValues(studyManifest?.conditions?.backgroundCode));
@@ -494,7 +502,7 @@ function mountUtteranceCapturePage(documentObject = globalThis.document) {
   controls.manifestFile.addEventListener('change', () => { void readSetup(); });
   controls.assetsFile.addEventListener('change', () => { void readSetup(); });
   controls.notice.addEventListener('change', refreshControls);
-  for (const select of [controls.signer, controls.consent, controls.lighting, controls.distance, controls.background]) {
+  for (const select of [controls.signer, controls.consent, controls.sampleKind, controls.lighting, controls.distance, controls.background]) {
     select.addEventListener('change', refreshControls);
   }
   controls.start.addEventListener('click', async () => {
@@ -517,6 +525,7 @@ function mountUtteranceCapturePage(documentObject = globalThis.document) {
           utteranceId: globalThis.crypto?.randomUUID?.().replaceAll('-', '') ?? `UTT_${Date.now()}`,
           signerCode: controls.signer.value,
           consentCode: controls.consent.value,
+          sampleKind: controls.sampleKind.value,
           scopeId: studyManifest.scopeId,
           fps: studyManifest.fps ?? 30,
           conditions: {
@@ -540,7 +549,7 @@ function mountUtteranceCapturePage(documentObject = globalThis.document) {
       await capture?.stop();
       hasRecord = Boolean(capture?.currentRecord);
       isCapturing = false;
-      setStatus(hasRecord ? 'İfade landmarkları bellekte. Danışman onaylı gloss zaman çizelgesini ekleyin.' : 'Kayıt tamamlanmadı.');
+      setStatus(hasRecord ? 'İfade landmarkları bellekte. SIGN örneğine gloss ekleyin; BLANK/UNKNOWN/PARTIAL örneği gloss almamalıdır.' : 'Kayıt tamamlanmadı.');
     } catch (error) {
       setStatus('Kayıt durdurulamadı: ' + (error.code ?? error.message));
     }

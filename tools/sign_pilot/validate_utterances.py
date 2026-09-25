@@ -27,11 +27,11 @@ _CONDITION_FIELDS = {"lightingCode", "distanceCode", "backgroundCode"}
 _RECORD_SCHEMA = {
     "required": {
         "schemaVersion", "utteranceId", "signerCode", "consentCode", "scopeId", "fps",
-        "frames", "glossEvents", "conditions", "preprocessVersion", "captureContractSha256",
+        "frames", "glossEvents", "sampleKind", "conditions", "preprocessVersion", "captureContractSha256",
     },
     "properties": {
         "schemaVersion", "utteranceId", "signerCode", "consentCode", "scopeId", "fps",
-        "frames", "glossEvents", "conditions", "preprocessVersion", "captureContractSha256",
+        "frames", "glossEvents", "sampleKind", "conditions", "preprocessVersion", "captureContractSha256",
     },
 }
 _EVENT_SCHEMA = {
@@ -260,9 +260,14 @@ def validate_utterance(record: object, signers: Iterable[str], approved_glosses:
             previous = timestamp
 
     events = record.get("glossEvents")
-    if not isinstance(events, list) or not events:
+    sample_kind = record.get("sampleKind")
+    if sample_kind not in ("SIGN", "BLANK", "UNKNOWN", "PARTIAL"):
+        _add(errors, "invalid_sample_kind")
+    if not isinstance(events, list) or (sample_kind == "SIGN" and not events):
         _add(errors, "invalid_gloss_events")
         events = []
+    elif sample_kind in ("BLANK", "UNKNOWN", "PARTIAL") and events:
+        _add(errors, "reject_sample_has_gloss")
     allowed_glosses = _codes(approved_glosses)
     valid_event_mappings = []
     previous_start = -math.inf
