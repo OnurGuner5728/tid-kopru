@@ -1,4 +1,5 @@
 import { analyzeTurkishText, normalizeTurkish } from './turkish-morphology.mjs';
+export { hasTwoApprovals, isValidGlossTimeline, translateTidGlossToTurkish } from './tid-to-turkish.mjs';
 
 const CONTENT_SCHEMA_VERSION = 1;
 const SHA256_PATTERN = /^[0-9a-f]{64}$/u;
