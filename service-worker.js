@@ -14,6 +14,7 @@ const APP_SHELL_ASSETS = [
   './icons/maskable.svg',
   './vendor/three/three.module.js',
   './vendor/three/addons/loaders/GLTFLoader.js',
+  './vendor/three/addons/utils/BufferGeometryUtils.js',
   './vendor/three/addons/controls/OrbitControls.js'
 ];
 
