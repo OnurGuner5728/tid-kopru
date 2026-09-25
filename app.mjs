@@ -4,6 +4,7 @@ import { matchText } from './matcher.mjs';
 const elements = {
   networkDot: document.querySelector('#network-dot'),
   networkLabel: document.querySelector('#network-label'),
+  pwaStatus: document.querySelector('#pwa-status'),
   speechSupport: document.querySelector('#speech-support'),
   heardText: document.querySelector('#heard-text'),
   heardCount: document.querySelector('#heard-count'),
@@ -250,13 +251,29 @@ async function initializeAvatar() {
   }
 }
 
+function setPwaStatus(message) {
+  elements.pwaStatus.textContent = message;
+  elements.pwaStatus.hidden = false;
+}
+
 function initializePwa() {
   updateNetworkStatus();
   window.addEventListener('online', updateNetworkStatus);
   window.addEventListener('offline', updateNetworkStatus);
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => navigator.serviceWorker.register('./service-worker.js'));
+  if (!('serviceWorker' in navigator)) {
+    setPwaStatus('Bu tarayıcı çevrimdışı uygulama kurulumunu desteklemiyor. Metinle kullanım devam eder.');
+    return;
   }
+
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./service-worker.js')
+      .then(() => {
+        setPwaStatus('Uygulama çevrimdışı açılış için hazır. Kurulum HTTPS bağlantısında yapılır; ilk çevrimdışı kullanım için avatarı bir kez indirip açın.');
+      })
+      .catch(() => {
+        setPwaStatus('Çevrimdışı açılış ayarı yapılamadı. Kurulum için HTTPS gerekir; metinle kullanım devam eder.');
+      });
+  });
 }
 
 elements.showSigns.disabled = true;
@@ -271,3 +288,4 @@ initializeTextActions();
 initializeTextToSpeech();
 initializeAvatar();
 updateCharacterCount();
+
