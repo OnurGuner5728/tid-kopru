@@ -240,7 +240,12 @@ export class SignRecognitionClient {
     }
     const candidate = {
       glossEvents: message.glossEvents.map((event) => ({ ...event })),
+      text: undefined,
+      glosses: message.glossEvents.map((event) => event.glossId),
       confidence: message.confidence,
+      source: 'verified-onnx',
+      warnings: [],
+      needsConfirmation: true,
       modelVersion: this.manifest.modelVersion,
       contentVersion: this.manifest.contentVersion,
     };

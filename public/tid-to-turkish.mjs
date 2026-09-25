@@ -230,3 +230,20 @@ export function translateTidGlossToTurkish(glossEvents, resources) {
   if (template?.result) return template.result;
   return rejected('unsupported_gloss_sequence', [], resources);
 }
+
+export function resolveCandidateTurkish(candidate, resources) {
+  if (!candidate || !Array.isArray(candidate.glosses) || !candidate.glosses.length
+      || typeof candidate.confidence !== 'number' || !Number.isFinite(candidate.confidence)) {
+    return rejected('invalid_candidate', [], resources);
+  }
+  const events = candidate.glosses.map((glossId, index) => ({
+    glossId, startFrame: index, endFrame: index + 1, confidence: candidate.confidence,
+  }));
+  const reviewed = translateTidGlossToTurkish(events, resources);
+  if (reviewed.status === 'ready') return { ...reviewed, needsConfirmation: true, source: 'reviewed-mapping' };
+  return {
+    status: 'candidate', text: candidate.glosses.join(' '), confidence: candidate.confidence,
+    reason: reviewed.reason, unsupportedGlosses: reviewed.unsupportedGlosses,
+    contentVersion: reviewed.contentVersion, needsConfirmation: true, source: candidate.source,
+  };
+}

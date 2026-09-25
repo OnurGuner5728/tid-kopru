@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import {
   isValidGlossTimeline,
+  resolveCandidateTurkish,
   translateTidGlossToTurkish,
 } from '../public/tid-to-turkish.mjs';
 import { translateTidGlossToTurkish as translateFromCombinedTransfer } from '../public/tid-transfer.mjs';
@@ -21,6 +22,18 @@ function approval(status = 'approved') {
     adjudication: null,
   };
 }
+
+test('candidate helper uses reviewed Turkish or returns editable gloss labels', () => {
+  const reviewedResources = resources([phrase('iyi', ['IYI'], 'İyiyim.')]);
+  const reviewed = resolveCandidateTurkish({ glosses: ['IYI'], confidence: 0.9, source: 'personal' }, reviewedResources);
+  assert.equal(reviewed.text, 'İyiyim.');
+  assert.equal(reviewed.source, 'reviewed-mapping');
+  assert.equal(reviewed.needsConfirmation, true);
+
+  const fallback = resolveCandidateTurkish({ glosses: ['BEN', 'IYI'], confidence: 0.8, source: 'personal' }, resources());
+  assert.equal(fallback.text, 'BEN IYI');
+  assert.equal(fallback.status, 'candidate');
+});
 
 function phrase(id, glosses, turkishText, options = {}) {
   return {

@@ -292,6 +292,8 @@ test('camera starts only from explicit action and a finished utterance creates a
   assert.equal(candidates.length, 1);
   assert.deepEqual(candidates[0].glossEvents, glossEvents);
   assert.equal(candidates[0].modelVersion, 'fixture-seq-v1');
+  assert.equal(candidates[0].source, 'verified-onnx');
+  assert.equal(candidates[0].needsConfirmation, true);
   assert.equal(fake.tracks.every((track) => track.stopped), true);
   assert.equal(fake.video.srcObject, null);
   assert.ok(fake.worker.messages.some(({ message, transfer }) => message.type === 'FRAME' && transfer.length === 1));

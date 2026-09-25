@@ -101,7 +101,7 @@ self.addEventListener('message', (event) => {
       }
       const result = await pipeline.finish();
       if (result?.status === 'candidate') {
-        self.postMessage({ type: 'CANDIDATE', glossEvents: result.glossEvents, confidence: result.confidence });
+        self.postMessage({ type: 'CANDIDATE', glossEvents: result.glossEvents, confidence: result.confidence, source: 'verified-onnx' });
       } else {
         self.postMessage({ type: 'REJECTED', reason: typeof result?.reason === 'string' ? result.reason : 'unsupported_utterance' });
       }
