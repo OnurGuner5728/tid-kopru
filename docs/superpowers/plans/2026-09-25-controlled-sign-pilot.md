@@ -47,29 +47,29 @@ The following items are prerequisites, not tasks to simulate with invented data:
 - Produces: `validate_dataset(records, signers, allowed_signs)` in `tools.sign_pilot.validate_dataset` returns a list of stable error codes; valid records contain `schemaVersion`, `signerCode`, `consentCode`, `signId`, `repetition`, `conditions`, `fps`, `frames`, and `preprocessVersion`.
 - A frame is a JSON object with numeric arrays for pose, left/right hand, face subset, and corresponding visibility masks. The manifest contains no name, contact information, or raw video path.
 
-- [ ] **Step 1: Write failing schema-validation tests**
+- [x] **Step 1: Write failing schema-validation tests**
 
 Create tests for: valid one-frame record; missing `consentCode`; unknown `signId`; negative repetition; non-finite landmark coordinate; and a record with a personal-name field. Expected error codes are respectively none, `missing_consent`, `unknown_sign`, `invalid_repetition`, `invalid_coordinate`, and `personal_data_field`.
 
-- [ ] **Step 2: Run the Python tests and verify the validator import fails**
+- [x] **Step 2: Run the Python tests and verify the validator import fails**
 
 Run: `python -m unittest discover -s tests -p "test_sign_pilot_dataset.py" -v`  
 Expected: FAIL because `tools.sign_pilot.validate_dataset` is not implemented.
 
-- [ ] **Step 3: Implement schema and stable validation errors**
+- [x] **Step 3: Implement schema and stable validation errors**
 
 Implement validation in `validate_dataset.py`; use only Python's standard library. Reject records with extra keys containing names, email addresses, phone numbers, or video paths. Do not treat missing consent metadata as a warning.
 
-- [ ] **Step 4: Run dataset schema tests**
+- [x] **Step 4: Run dataset schema tests**
 
 Run: `python -m unittest discover -s tests -p "test_sign_pilot_dataset.py" -v`.  
 Expected: PASS, all six cases.
 
-- [ ] **Step 5: Document collection and deletion rules**
+- [x] **Step 5: Document collection and deletion rules**
 
 In `README.md`, state that raw video is not captured by default; exported landmark data is sensitive; consent scope and retention time must be approved before collection; a participant's consent withdrawal must map to `signerCode` and permit deleting all of that signer's records.
 
-- [ ] **Step 6: Commit the data contract**
+- [x] **Step 6: Commit the data contract**
 
 ```powershell
 git add tools/sign_pilot/schema.json tools/sign_pilot/validate_dataset.py tools/sign_pilot/README.md tests/test_sign_pilot_dataset.py
