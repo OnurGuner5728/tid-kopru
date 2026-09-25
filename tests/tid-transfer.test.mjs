@@ -4,7 +4,7 @@ import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
-import { loadTidTranslationResources, translateTurkishToTid } from '../public/tid-transfer.mjs';
+import { loadTidTranslationResources, translateTidGlossToTurkish, translateTurkishToTid } from '../public/tid-transfer.mjs';
 
 const repositoryRoot = dirname(dirname(fileURLToPath(import.meta.url)));
 const reviewerCodes = ['synthetic-reviewer-a', 'synthetic-reviewer-b'];
@@ -256,9 +256,11 @@ function response(text) {
 test('the packaged manifest loads only same-origin versioned reviewed content', async () => {
   const manifestText = await readFile(join(repositoryRoot, 'public/assets/tid/content-manifest.json'), 'utf8');
   const reviewedText = await readFile(join(repositoryRoot, 'public/assets/tid/reviewed-content.json'), 'utf8');
+  const reverseText = await readFile(join(repositoryRoot, 'public/assets/tid/gloss-to-turkish.json'), 'utf8');
   const files = new Map([
     ['/assets/tid/content-manifest.json', manifestText],
     ['/assets/tid/reviewed-content.json', reviewedText],
+    ['/assets/tid/gloss-to-turkish.json', reverseText],
   ]);
   const fetcher = async (url) => {
     const path = new URL(url).pathname;
@@ -270,6 +272,30 @@ test('the packaged manifest loads only same-origin versioned reviewed content', 
   assert.deepEqual(resources.entries, []);
   assert.deepEqual(resources.templates, []);
   assert.deepEqual(resources.mediaManifest, {});
+  assert.deepEqual(resources.glossToTurkish.vocabulary, []);
+  assert.equal(translateTidGlossToTurkish([{ glossId: 'HELLO', startFrame: 0, endFrame: 1, confidence: 0.9 }], resources.glossToTurkish).status, 'unsupported');
+});
+
+test('the content loader rejects a gloss-to-Turkish hash mismatch', async () => {
+  const reviewedContent = { schemaVersion: 1, contentVersion: 'test-content-v1', entries: [] };
+  const reverseContent = { schemaVersion: 1, contentVersion: 'test-content-v1', vocabulary: [], phrases: [], templates: [] };
+  const manifest = await withContentHash({
+    schemaVersion: 1,
+    contentVersion: 'test-content-v1',
+    reviewedContent: { path: '/assets/tid/reviewed-content.json', sha256: await sha256(JSON.stringify(reviewedContent)) },
+    glossToTurkish: { path: '/assets/tid/gloss-to-turkish.json', sha256: '0'.repeat(64) },
+    lexicon: [], templates: [], mediaAssets: {},
+  });
+  const fetcher = async (url) => {
+    const path = new URL(url).pathname;
+    if (path.endsWith('content-manifest.json')) return response(JSON.stringify(manifest));
+    if (path.endsWith('reviewed-content.json')) return response(JSON.stringify(reviewedContent));
+    return response(JSON.stringify(reverseContent));
+  };
+  await assert.rejects(
+    loadTidTranslationResources({ fetcher, origin: 'https://tid.example' }),
+    (error) => error.code === 'gloss_to_turkish_hash_mismatch',
+  );
 });
 
 test('the content loader rejects a mismatched reviewed content hash', async () => {

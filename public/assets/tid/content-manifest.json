@@ -5,8 +5,12 @@
     "path": "/assets/tid/reviewed-content.json",
     "sha256": "7f466218304637386763c2c0892ffe4ec34ec0486dbaa245b6b37a7457456784"
   },
+  "glossToTurkish": {
+    "path": "/assets/tid/gloss-to-turkish.json",
+    "sha256": "761fcb980b5e16805976e97148c4d9d34e0deb3b3a8476c796a034c386f6aa5a"
+  },
   "lexicon": [],
   "templates": [],
   "mediaAssets": {},
-  "contentHash": "3e9ca1e49f9c9b33649e094f5a7bed0083b5ee83efe41447c263fc8bef4c5f19"
+  "contentHash": "ffe45339b60728564c54d9fa882fe20d1580bba8d64e95a5991e3f21dbda5890"
 }

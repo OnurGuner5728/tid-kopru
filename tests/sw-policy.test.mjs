@@ -9,7 +9,7 @@ const source = await readFile(new URL('../public/sw-policy.js', import.meta.url)
 const context = { URL, Response, crypto: webcrypto };
 context.globalThis = context;
 vm.runInNewContext(source, context);
-const { getOfflineAwareResponse, shouldDeleteCache } = context.TidKopruCachePolicy;
+const { getOfflineAwareResponse, getCameraModelResponse, shouldDeleteCache } = context.TidKopruCachePolicy;
 
 test('offline navigation returns the cached app shell', async () => {
   const shell = new Response('<main>TİD Köprü</main>');
@@ -72,6 +72,42 @@ test('only old app caches are deleted during activation', () => {
   assert.equal(shouldDeleteCache('tid-kopru-v1', 'tid-kopru-v3'), true);
   assert.equal(shouldDeleteCache('tid-kopru-v3', 'tid-kopru-v3'), false);
   assert.equal(shouldDeleteCache('unrelated-site-cache', 'tid-kopru-v2'), false);
+  assert.equal(shouldDeleteCache('tid-camera-model-seq-v1', 'tid-kopru-v3'), false);
+});
+
+test('camera assets use only the installed version cache and never join the app shell cache', async () => {
+  const manifest = { schemaVersion: 1, available: true, modelVersion: 'seq-v1', files: [
+    { path: '/assets/tid/camera/model.onnx', sha256: 'a'.repeat(64), licenseId: 'TEST-ONLY', redistributionAllowed: true },
+  ] };
+  let opened;
+  let fetched = 0;
+  const result = await getCameraModelResponse({
+    request: request('https://tid.test/assets/tid/camera/model.onnx'), origin: 'https://tid.test', manifest,
+    cacheStorage: { open: async (name) => { opened = name; return { match: async () => undefined }; } },
+    fetcher: async () => { fetched += 1; return new Response('model bytes'); },
+  });
+  assert.equal(opened, 'tid-camera-model-seq-v1');
+  assert.equal(fetched, 1);
+  assert.equal(await result.text(), 'model bytes');
+});
+
+test('camera files must be manifest-listed and same-origin', async () => {
+  const manifest = { schemaVersion: 1, available: true, modelVersion: 'seq-v1', files: [
+    { path: '/assets/tid/camera/model.onnx', sha256: 'a'.repeat(64), licenseId: 'TEST-ONLY', redistributionAllowed: true },
+  ] };
+  let fetched = 0;
+  const cacheStorage = { open: async () => ({ match: async () => undefined }) };
+  const unlisted = await getCameraModelResponse({
+    request: request('https://tid.test/assets/tid/camera/participant.webm'), origin: 'https://tid.test', manifest,
+    cacheStorage, fetcher: async () => { fetched += 1; return new Response('unexpected'); },
+  });
+  const external = await getCameraModelResponse({
+    request: request('https://outside.example/assets/tid/camera/model.onnx'), origin: 'https://tid.test', manifest,
+    cacheStorage, fetcher: async () => { fetched += 1; return new Response('unexpected'); },
+  });
+  assert.equal(unlisted.status, 404);
+  assert.equal(external.status, 503);
+  assert.equal(fetched, 0);
 });
 
 test('only licensed manifest-listed TID assets are cached after their bytes match the approved hash', async () => {
@@ -142,10 +178,13 @@ test('app shell excludes large avatar downloads and includes its runtime depende
   assert.equal(assets.includes('./assets/tid/approved-media.webm'), false);
   assert.ok(assets.includes('./assets/tid/content-manifest.json'));
   assert.ok(assets.includes('./assets/tid/reviewed-content.json'));
+  assert.ok(assets.includes('./assets/tid/gloss-to-turkish.json'));
+  assert.ok(assets.includes('./assets/tid/sentence-model-manifest.json'));
   assert.ok(assets.includes('./assets/tid/morphology-rules.json'));
   for (const asset of [
     './', './index.html', './styles.css', './app.mjs', './avatar.mjs', './matcher.mjs',
     './tid-output-ui.mjs',
+    './tid-to-turkish.mjs', './sign-recognition.mjs', './sign-recognition-worker.js', './onnx-runtime-loader.mjs',
     './sw-policy.js', './manifest.webmanifest', './icons/icon.svg', './icons/maskable.svg',
     './vendor/three/three.module.js', './vendor/three/addons/loaders/GLTFLoader.js',
     './vendor/three/addons/controls/OrbitControls.js', './vendor/three/addons/utils/BufferGeometryUtils.js'
@@ -155,9 +194,10 @@ test('app shell excludes large avatar downloads and includes its runtime depende
 });
 
 test('app shell contains only the current release cache prefix policy', () => {
-  assert.match(workerSource, /const CACHE_NAME = 'tid-kopru-v3'/u);
+  assert.match(workerSource, /const CACHE_NAME = 'tid-kopru-v4'/u);
   assert.match(workerSource, /shouldDeleteCache\(name, CACHE_NAME\)/u);
   assert.match(workerSource, /getReviewedMediaResponse/u);
+  assert.match(workerSource, /getCameraModelResponse/u);
 });
 
 const appHtml = await readFile(new URL('../public/index.html', import.meta.url), 'utf8');
