@@ -222,3 +222,15 @@ test('typing while translation resources are loading does not enable premature c
   assert.equal(fixture.elements.status.dataset.state, 'loading');
   assert.deepEqual(fixture.calls.translated, []);
 });
+
+test('fallback output is labeled without claiming expert-approved TİD', async () => {
+  const fixture = makeFixture({ translateText: (sourceText) => ({
+    status: 'ready', sourceText, sourceClass: 'fallback-cards', glossText: 'IYI',
+    segments: [{ kind: 'letter-card', label: 'X' }], unsupported: [],
+  }) });
+  fixture.elements.input.value = 'iyi x';
+  await fixture.elements.confirmButton.click();
+  assert.match(fixture.elements.gloss.textContent, /Harf kartları/u);
+  assert.doesNotMatch(fixture.elements.status.textContent, /uzman onaylı doğal TİD cümlesidir/u);
+  assert.equal(fixture.elements.playButton.disabled, false);
+});

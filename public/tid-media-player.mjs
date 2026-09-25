@@ -59,6 +59,11 @@ function validateSegmentShape(segment) {
   ))) fail('non_manual_timeline_invalid');
 }
 
+function validateDisplaySegment(segment) {
+  if (!isRecord(segment) || !['dictionary-pose', 'letter-card', 'unsupported'].includes(segment.kind)
+    || typeof segment.label !== 'string' || !segment.label.trim()) fail('segment_invalid');
+}
+
 async function validateAsset(asset, segment, origin) {
   if (!isRecord(asset)) fail('asset_missing');
   if (!isSafeAssetPath(asset.path, origin)) fail('asset_unsafe_path');
@@ -100,6 +105,7 @@ export function createTidMediaPlayer({
   videoElement = null,
   resolveAsset,
   origin = globalThis.location?.origin ?? 'http://localhost',
+  fallbackDurationMs = 650,
 } = {}) {
   if (typeof resolveAsset !== 'function') fail('asset_resolver_required');
   let stopped = false;
@@ -238,6 +244,29 @@ export function createTidMediaPlayer({
     return result;
   }
 
+  async function playDisplaySegment(segment, callbacks = {}) {
+    validateDisplaySegment(segment);
+    callbacks.onSegmentStart?.(segment);
+    let result = { status: 'completed' };
+    if (segment.kind === 'dictionary-pose') {
+      if (!avatar || typeof avatar.playWord !== 'function') fail('avatar_player_unavailable');
+      const played = await avatar.playWord(segment.label);
+      if (played === false) fail('dictionary_pose_unavailable');
+    } else {
+      callbacks.onFallbackSegment?.(segment);
+      result = await new Promise((resolve) => {
+        const timeoutId = setTimeout(() => resolve({ status: stopped || disposed ? 'stopped' : 'completed' }), fallbackDurationMs);
+        activeCleanup = () => {
+          clearTimeout(timeoutId);
+          resolve({ status: 'stopped' });
+        };
+      });
+      activeCleanup = null;
+    }
+    callbacks.onSegmentEnd?.(segment, result);
+    return result;
+  }
+
   async function play(segments, callbacks = {}) {
     if (disposed) fail('player_disposed');
     if (activePromise) fail('player_busy');
@@ -245,7 +274,16 @@ export function createTidMediaPlayer({
     stopped = false;
     const promise = (async () => {
       const prepared = [];
-      for (const segment of segments) {
+      for (let segment of segments) {
+        if (segment?.kind === 'reviewed-media') {
+          validateSegmentShape(segment.mediaSegment);
+          segment = segment.mediaSegment;
+        }
+        if (['dictionary-pose', 'letter-card', 'unsupported'].includes(segment?.kind)) {
+          validateDisplaySegment(segment);
+          prepared.push({ segment, asset: null, display: true });
+          continue;
+        }
         validateSegmentShape(segment);
         let asset;
         try {
@@ -253,11 +291,13 @@ export function createTidMediaPlayer({
         } catch {
           fail('asset_missing');
         }
-        prepared.push({ segment, asset: await validateAsset(asset, segment, origin) });
+        prepared.push({ segment, asset: await validateAsset(asset, segment, origin), display: false });
       }
-      for (const { segment, asset } of prepared) {
+      for (const { segment, asset, display } of prepared) {
         if (stopped || disposed) break;
-        const result = await playValidatedSegment(asset, segment, callbacks);
+        const result = display
+          ? await playDisplaySegment(segment, callbacks)
+          : await playValidatedSegment(asset, segment, callbacks);
         if (result.status === 'stopped') break;
       }
       return { status: stopped || disposed ? 'stopped' : 'completed' };

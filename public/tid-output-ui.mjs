@@ -6,6 +6,12 @@ const STATUS_TEXT = {
   error: 'İşlem tamamlanamadı. Bağlantıyı kontrol edip yeniden deneyin veya metni düzenleyin.',
 };
 
+const SOURCE_LABELS = {
+  'reviewed-tid': 'Onaylı TİD',
+  'dictionary-sequence': 'Sözlük dizimi',
+  'fallback-cards': 'Harf kartları / yapay zekâ adayı',
+};
+
 export function createTidOutputController({
   input,
   confirmButton,
@@ -56,8 +62,13 @@ export function createTidOutputController({
     currentResult = nextState === 'error' ? null : result;
     sourceText.textContent = typeof result?.sourceText === 'string' ? result.sourceText : input.value;
     if (nextState === 'ready') {
-      gloss.textContent = result.glossText || 'Onaylı karşılık';
-      status.textContent = STATUS_TEXT.ready;
+      const sourceLabel = SOURCE_LABELS[result.sourceClass] ?? 'Onaylı TİD';
+      gloss.textContent = `${sourceLabel}: ${result.glossText || 'gösterim hazır'}`;
+      status.textContent = result.sourceClass === 'reviewed-tid' || !result.sourceClass
+        ? STATUS_TEXT.ready
+        : result.sourceClass === 'dictionary-sequence'
+          ? 'Sözlükteki işaretlerin dizimi hazır. Bu dizi uzman onaylı doğal TİD cümlesi değildir.'
+          : 'Sözlükte olmayan bölümler harf kartlarıyla gösterilecek. Bu çıktı uzman onaylı doğal TİD değildir.';
     } else if (nextState === 'text-only') {
       gloss.textContent = result.glossText ? `Yalnızca yazılı gloss: ${result.glossText}` : 'Yalnızca yazılı gloss';
       status.textContent = STATUS_TEXT['text-only'];
@@ -151,7 +162,7 @@ export function createTidOutputController({
         onSegmentStart: (segment) => {
           if (currentResult !== result) return;
           segmentIndex += 1;
-          progress.textContent = `Onaylı işaret ${segmentIndex} / ${result.segments.length} gösteriliyor.`;
+          progress.textContent = `Gösterim ${segmentIndex} / ${result.segments.length} oynatılıyor.`;
           onMediaSegment(segment, { index: segmentIndex - 1, total: result.segments.length });
         },
         onSegmentEnd: (segment, segmentResult) => onMediaSegment(segment, { result: segmentResult }),

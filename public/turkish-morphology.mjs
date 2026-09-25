@@ -86,6 +86,15 @@ function findAnalyses(normalized, entries, rules) {
   const analyses = [];
   const seen = new Set();
 
+  const properName = normalized.match(/^([\p{L}\p{M}]+)['’](ın|in|un|ün)$/u);
+  if (properName) {
+    addUniqueAnalysis(analyses, seen, {
+      lemma: properName[1],
+      partOfSpeech: 'proper_noun',
+      features: { case: 'genitive', properName: true },
+    });
+  }
+
   for (const entry of entries) {
     if (entry.lemma === normalized) {
       addUniqueAnalysis(analyses, seen, {
@@ -121,6 +130,36 @@ function findAnalyses(normalized, entries, rules) {
         });
       }
     }
+  }
+
+  for (const entry of entries) {
+    if (entry.partOfSpeech === 'noun') {
+      const stackedSuffixes = TURKISH_VOWELS.has(Array.from(entry.lemma).at(-1))
+        ? ['mın', 'min', 'mun', 'mün']
+        : ['ımın', 'imin', 'umun', 'ümün'];
+      if (stackedSuffixes.some((suffix) => normalized === `${entry.lemma}${suffix}`)) {
+        addUniqueAnalysis(analyses, seen, {
+          lemma: entry.lemma,
+          partOfSpeech: entry.partOfSpeech,
+          features: { possessivePerson: '1sg', case: 'genitive' },
+        });
+      }
+    }
+
+    if (entry.partOfSpeech === 'verb') {
+      const softened = entry.lemma.endsWith('t') ? `${entry.lemma.slice(0, -1)}d` : entry.lemma;
+      if (['acak', 'ecek'].some((suffix) => normalized === `${softened}${suffix}` || normalized === `${entry.lemma}${suffix}`)) {
+        addUniqueAnalysis(analyses, seen, {
+          lemma: entry.lemma,
+          partOfSpeech: entry.partOfSpeech,
+          features: { tense: 'future', predicatePerson: '3sg' },
+        });
+      }
+    }
+  }
+
+  for (const analysis of analyses) {
+    if (analysis.lemma === 'değil') analysis.features = { polarity: 'negative', ...analysis.features };
   }
   return analyses;
 }

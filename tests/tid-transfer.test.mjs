@@ -85,6 +85,7 @@ test('an exact approved sentence returns its licensed timed segments', () => {
   const result = translateTurkishToTid('Sen iyisin', resourcesFor([entry]));
 
   assert.equal(result.status, 'ready');
+  assert.equal(result.sourceClass, 'reviewed-tid');
   assert.equal(result.sourceText, 'Sen iyisin');
   assert.deepEqual(result.segments.map(({ assetId }) => assetId), ['approved-sen-iyi-clip']);
   assert.deepEqual(result.segments[0], {

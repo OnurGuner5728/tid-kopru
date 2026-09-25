@@ -181,6 +181,7 @@ function matchApprovedTemplate(sentences, templates) {
 function resolveApprovedMedia(entry, manifest, analysis, resources, sourceText) {
   const result = {
     sourceText,
+    sourceClass: 'reviewed-tid',
     analyses: analysis?.sentences ?? [],
     glossText: entry?.translation?.glossText ?? '',
     unsupported: [],

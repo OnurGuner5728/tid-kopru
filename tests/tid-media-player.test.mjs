@@ -178,3 +178,28 @@ test('end of playback pauses media, restores neutral avatar pose, and dispose re
   player.dispose();
   assert.equal([...video.listeners.values()].reduce((count, listeners) => count + listeners.size, 0), 0);
 });
+
+test('plays reviewed wrappers, dictionary poses, and visible fallback cards in one plan', async () => {
+  const video = new FakeVideo();
+  const shown = [];
+  const avatar = {
+    async playWord(label) { shown.push(`pose:${label}`); return true; },
+    applyIdlePose() {},
+    stop() {},
+  };
+  const player = createTidMediaPlayer({
+    videoElement: video,
+    avatar,
+    fallbackDurationMs: 0,
+    resolveAsset: async () => videoAsset(),
+  });
+
+  const result = await player.play([
+    { kind: 'reviewed-media', mediaSegment: approvedVideoSegment('reviewed') },
+    { kind: 'dictionary-pose', label: 'IYI' },
+    { kind: 'letter-card', label: 'X' },
+  ], { onFallbackSegment: (segment) => shown.push(`card:${segment.label}`) });
+
+  assert.deepEqual(result, { status: 'completed' });
+  assert.deepEqual(shown, ['pose:IYI', 'card:X']);
+});

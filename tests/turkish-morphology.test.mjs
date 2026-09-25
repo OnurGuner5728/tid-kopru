@@ -121,3 +121,23 @@ test('known suffixes with invalid vowel harmony are not accepted', () => {
     assert.equal(result.sentences[0].tokens[0].lemma, null, surface);
   }
 });
+
+test('stacked possession, future tense, negative copula and proper-name genitive remain explicit', () => {
+  const extended = { entries: [
+    ...lexicon.entries,
+    { lemma: 'anne', partOfSpeech: 'noun' },
+    { lemma: 'git', partOfSpeech: 'verb' },
+    { lemma: 'değil', partOfSpeech: 'adjective' },
+  ] };
+
+  assert.deepEqual(analyzeTurkishText('annemin', extended).sentences[0].tokens[0].features, {
+    possessivePerson: '1sg', case: 'genitive',
+  });
+  assert.equal(analyzeTurkishText('gidecek', extended).sentences[0].tokens[0].features.tense, 'future');
+  assert.deepEqual(analyzeTurkishText('değilim', extended).sentences[0].tokens[0].features, {
+    polarity: 'negative', predicatePerson: '1sg',
+  });
+  assert.deepEqual(analyzeTurkishText("Onur'un", extended).sentences[0].tokens[0].features, {
+    case: 'genitive', properName: true,
+  });
+});
