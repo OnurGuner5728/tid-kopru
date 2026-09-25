@@ -21,7 +21,7 @@ export class SignAvatar {
   }
 
   async initialize() {
-    this.setupScene();
+    if (!this.renderer) this.setupScene();
     try {
       const [poseResponse, model] = await Promise.all([
         fetch('./assets/avatar/saved-poses.json'),
@@ -209,3 +209,4 @@ export class SignAvatar {
     this.stopRequested = true;
   }
 }
+
