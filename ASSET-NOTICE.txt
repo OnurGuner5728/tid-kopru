@@ -1,0 +1,9 @@
+TİD Köprü avatar varlık bildirimi
+
+saved-poses.json, SignBridge ana deposundaki web/avatar/saved_poses.json dosyasından alınmıştır.
+Kaynak: esmasila/SignBridge
+Lisans: MIT; tam metin SIGNBRIDGE-LICENSE.txt dosyasındadır.
+
+rain.glb ve yerel Three.js dosyaları, esmasila/SignBridge-Mobile deposundaki assets/avatar dizisinden alınmıştır. SignBridge ana projesi MIT olarak yayımlansa da karakter modelinin ayrı kullanım ve yeniden dağıtım hakları açıkça belgelenmemiştir. Bu varlık hakları halka açık veya ticari dağıtımdan önce doğrulanmalıdır.
+
+Three.js, MIT lisansı altında yayımlanır.

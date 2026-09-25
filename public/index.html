@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0b6b61">
+  <meta name="description" content="Türk İşaret Dili kullanan kişiler ile işiten kişiler arasında yüz yüze iletişime yardımcı araç.">
+  <title>TİD Köprü</title>
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" href="./icons/icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./styles.css">
+  <script type="importmap">
+    {"imports":{"three":"./vendor/three/three.module.js","three/addons/":"./vendor/three/addons/"}}
+  </script>
+  <script type="module" src="./app.mjs"></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">İçeriğe geç</a>
+  <header class="site-header">
+    <a class="brand" href="#top" aria-label="TİD Köprü ana sayfa">
+      <span class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 48 48"><path d="M13 33c-2.8-3.1-4.2-6.8-3.2-9.5.8-2.1 2.6-2.2 3.7-.5l2 3.1V12.5c0-1.8 2.7-1.8 2.7 0V22h1V9.5c0-1.9 2.8-1.9 2.8 0V22h1V10.5c0-1.8 2.7-1.8 2.7 0V22h1v-8.4c0-1.8 2.7-1.8 2.7 0v13.1l2.2-2.3c1.6-1.7 4.1.2 2.9 2.2l-5 8.2A8 8 0 0 1 23.7 39h-3.9a9 9 0 0 1-6.8-6Z"/></svg>
+      </span>
+      <span><strong>TİD Köprü</strong><small>Yüz yüze iletişim yardımcısı</small></span>
+    </a>
+    <div class="header-status">
+      <span class="status-dot" id="network-dot"></span>
+      <span id="network-label">Bağlantı kontrol ediliyor</span>
+    </div>
+  </header>
+
+  <main id="main">
+    <section class="intro" id="top" aria-labelledby="intro-title">
+      <div>
+        <p class="eyebrow">Ücretsiz · Hesapsız · Kayıt tutmaz</p>
+        <h1 id="intro-title">Aynı masada,<br><em>daha anlaşılır</em> iletişim.</h1>
+        <p class="intro-copy">Konuşmayı yazıya dönüştürün, yanıtınızı seslendirin veya kayıtlı işaretleri avatarla izleyin.</p>
+      </div>
+      <aside class="privacy-card">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 4.5 5v5.4c0 5 3.2 9.6 7.5 11.1 4.3-1.5 7.5-6.1 7.5-11.1V5L12 2Zm0 4a3 3 0 0 1 3 3v1h1v6H8v-6h1V9a3 3 0 0 1 3-3Zm0 2a1 1 0 0 0-1 1v1h2V9a1 1 0 0 0-1-1Z"/></svg>
+        <div><strong>Gizlilik önce gelir</strong><p>Metin ve avatar cihazınızda çalışır. Ses tanıma, tarayıcınıza göre uzak bir hizmet kullanabilir.</p></div>
+      </aside>
+    </section>
+
+    <section class="conversation-grid" aria-label="İletişim araçları">
+      <article class="tool-card speech-card">
+        <div class="card-heading">
+          <span class="step-number">01</span>
+          <div><p class="kicker">İşiten kişiden</p><h2>Konuşmayı yaz</h2></div>
+        </div>
+        <p class="card-description">Mikrofona dokunun. Duyulan Türkçe metni gerekirse elle düzeltin.</p>
+        <div class="speech-support" id="speech-support" role="status"></div>
+        <label class="field-label" for="heard-text">Duyulan metin</label>
+        <textarea id="heard-text" rows="6" maxlength="800" placeholder="Konuşma burada görünecek…"></textarea>
+        <div class="field-meta"><span id="heard-count">0 / 800</span><span id="listening-state" aria-live="polite">Hazır</span></div>
+        <div class="button-row">
+          <button class="button primary mic-button" id="mic-button" type="button">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 1 0-6 0v6a3 3 0 0 0 3 3Zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.9V21H8v2h8v-2h-3v-3.1A7 7 0 0 0 19 11h-2Z"/></svg>
+            <span>Dinlemeyi başlat</span>
+          </button>
+          <button class="button secondary" id="fullscreen-button" type="button">Büyük göster</button>
+          <button class="icon-button" id="clear-heard" type="button" aria-label="Duyulan metni temizle" title="Temizle">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 21a2 2 0 0 1-2-2V7H3V5h5V3h8v2h5v2h-2v12a2 2 0 0 1-2 2H7Zm2-4h2V9H9v8Zm4 0h2V9h-2v8Z"/></svg>
+          </button>
+        </div>
+      </article>
+
+      <article class="tool-card reply-card">
+        <div class="card-heading">
+          <span class="step-number">02</span>
+          <div><p class="kicker">TİD kullanan kişiden</p><h2>Yanıtı seslendir</h2></div>
+        </div>
+        <p class="card-description">Yanıtınızı yazın; telefonunuzun Türkçe sesiyle karşı tarafa okutun.</p>
+        <label class="field-label" for="reply-text">Yanıtınız</label>
+        <textarea id="reply-text" rows="6" maxlength="800" placeholder="Örneğin: Bir dakika lütfen."></textarea>
+        <div class="quick-replies" aria-label="Hazır yanıtlar">
+          <button type="button" data-reply="Bir dakika lütfen.">Bir dakika</button>
+          <button type="button" data-reply="Tekrar eder misiniz?">Tekrar eder misiniz?</button>
+          <button type="button" data-reply="Teşekkür ederim.">Teşekkürler</button>
+        </div>
+        <div class="button-row">
+          <button class="button coral" id="speak-button" type="button">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9v6h4l5 4V5L7 9H3Zm13.5 3a4.5 4.5 0 0 0-2.5-4v8a4.5 4.5 0 0 0 2.5-4Zm-2.5-9v2.1a7.5 7.5 0 0 1 0 13.8V21a9.5 9.5 0 0 0 0-18Z"/></svg>
+            Seslendir
+          </button>
+          <button class="button secondary" id="stop-speech" type="button">Durdur</button>
+        </div>
+        <p class="inline-status" id="tts-status" aria-live="polite">Cihaz sesi kullanılacak.</p>
+      </article>
+    </section>
+
+    <section class="sign-section" aria-labelledby="sign-title">
+      <div class="sign-copy">
+        <p class="eyebrow light">Kayıtlı işaret sözlüğü</p>
+        <h2 id="sign-title">Türkçe metni avatarla göster</h2>
+        <p>Metindeki yalnızca birebir eşleşen kayıtlı sözcükler sırayla oynatılır. Bu özellik doğal TİD cümle çevirisi değildir.</p>
+        <label class="field-label light-label" for="sign-text">Gösterilecek metin</label>
+        <div class="sign-input-row">
+          <input id="sign-text" type="text" maxlength="240" placeholder="Örneğin: anne baba arkadaş">
+          <button class="button lime" id="show-signs" type="button">İşaretleri göster</button>
+        </div>
+        <div class="match-summary" id="match-summary" aria-live="polite">
+          <span id="dictionary-count">Sözlük yükleniyor…</span>
+        </div>
+        <div class="token-list" id="token-list"></div>
+        <div class="missing-box" id="missing-box" hidden>
+          <strong>Bulunamayan sözcükler</strong>
+          <span id="missing-words"></span>
+        </div>
+      </div>
+      <div class="avatar-panel">
+        <div class="avatar-topline">
+          <span class="avatar-label">Avatar önizleme</span>
+          <span class="avatar-status" id="avatar-status" aria-live="polite">Yükleniyor…</span>
+        </div>
+        <div class="avatar-stage" id="avatar-stage">
+          <div class="avatar-loader" id="avatar-loader"><span></span><p>Avatar hazırlanıyor</p></div>
+          <div class="current-word" id="current-word"></div>
+        </div>
+        <div class="progress-track"><span id="sign-progress"></span></div>
+        <p class="avatar-footnote">Poz verileri SignBridge kaynaklarından alınmıştır. Anlaşılabilirlik, TİD bilen kullanıcılarla doğrulanmalıdır.</p>
+      </div>
+    </section>
+
+    <section class="limits" aria-labelledby="limits-title">
+      <div><p class="eyebrow">Bu sürüm ne yapmaz?</p><h2 id="limits-title">Sınırları açıkça biliyoruz.</h2></div>
+      <ul>
+        <li><strong>Kamera tanıma yok.</strong><span>Görüntüden otomatik TİD→Türkçe çıkarımı uygulanmadı.</span></li>
+        <li><strong>Tam çeviri değil.</strong><span>Kayıtlı tekil işaretler, Türkçe sözcük sırasıyla gösterilir.</span></li>
+        <li><strong>Acil durum aracı değil.</strong><span>Medikal veya hayati kararlar için tek iletişim kanalı olarak kullanılmamalıdır.</span></li>
+      </ul>
+    </section>
+  </main>
+
+  <footer>
+    <div class="brand footer-brand"><span class="brand-mark" aria-hidden="true">TİD</span><span><strong>TİD Köprü</strong><small>İletişimi kolaylaştıran açık prototip</small></span></div>
+    <p>Hesap yok · Sunucu yok · Kayıt yok</p>
+    <p>Avatar kodu ve pozları: SignBridge, MIT. Karakter varlığının yayın hakkı ayrıca doğrulanmalıdır.</p>
+  </footer>
+
+  <dialog id="fullscreen-dialog">
+    <button class="dialog-close" id="dialog-close" type="button" aria-label="Tam ekran metni kapat">Kapat</button>
+    <p id="fullscreen-text"></p>
+  </dialog>
+</body>
+</html>
