@@ -62,6 +62,7 @@ let cameraManifest = null;
 let cameraClient = null;
 let cameraInstalled = false;
 let cameraCandidateReady = false;
+const AVATAR_MODEL_REDISTRIBUTION_APPROVED = false;
 
 function updateNetworkStatus() {
   const online = navigator.onLine;
@@ -212,6 +213,14 @@ function initializeTextToSpeech() {
 }
 
 async function loadAvatar() {
+  if (!AVATAR_MODEL_REDISTRIBUTION_APPROVED) {
+    elements.avatarLoader.hidden = true;
+    elements.avatarRetry.hidden = true;
+    elements.avatarRetry.disabled = true;
+    elements.avatarStatus.textContent = 'Karakter modelinin yeniden dağıtım izni doğrulanmadığı için avatar kapalı.';
+    return;
+  }
+
   elements.avatarLoader.hidden = false;
   elements.avatarRetry.hidden = true;
   elements.avatarRetry.disabled = true;
@@ -480,7 +489,7 @@ function initializeTidOutput() {
 function renderPwaStatus() {
   const offlineMessage = navigator.onLine
     ? ''
-    : 'Çevrimdışı kullanımda daha önce açılmış avatar ve onaylı TİD içerikleri kullanılabilir. Mikrofon tanıma internet gerektirebilir.';
+      : 'Çevrimdışı kullanımda daha önce indirilmiş onaylı TİD içeriği kullanılabilir. Mikrofon tanıma internet gerektirebilir.';
   const message = [pwaStatusMessage, offlineMessage].filter(Boolean).join(' ');
   elements.pwaStatus.textContent = message;
   elements.pwaStatus.hidden = !message;
@@ -528,8 +537,8 @@ function initializePwa() {
     .then(async () => {
       const controlled = await waitForServiceWorkerControl();
       setPwaStatus(controlled
-          ? 'Uygulama çevrimdışı açılış için hazır. Kurulum HTTPS bağlantısında yapılır; TİD medya dosyaları ilk oynatımda indirilir.'
-        : 'Çevrimdışı önbellek kurulumu zaman aldı. Avatar yine yüklenmeyi deneyecek; çevrimdışı kullanım için sayfayı yenileyin.');
+            ? 'Uygulama çevrimdışı açılış için hazır. Kurulum HTTPS bağlantısında yapılır; onaylı TİD medya dosyaları varsa ilk oynatımda indirilir.'
+            : 'Çevrimdışı önbellek kurulumu zaman aldı. Onaylı içerik çevrimdışı olmayabilir; yeniden denemek için sayfayı yenileyin.');
     })
     .catch(() => {
       setPwaStatus('Çevrimdışı açılış ayarı yapılamadı. Kurulum için HTTPS gerekir; metinle kullanım devam eder.');
