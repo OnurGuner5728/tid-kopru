@@ -88,20 +88,20 @@ git commit -m "test: define consented sign-pilot data contract"
 **Interfaces:**
 - Produces: `startCapture({ videoElement, onFrame, onError })`, `stopCapture()`, and `exportLandmarkRecords(records)` in `tools/sign_pilot/capture.mjs`; each saved record validates against Task 1 before it can be exported.
 
-- [ ] **Step 1: Write tests for frame normalization and export gating**
+- [x] **Step 1: Write tests for frame normalization and export gating**
 
 Test that coordinates are finite, timestamps increase, missing joints receive a zero coordinate plus a false visibility mask, exports contain no `video` or `blob` field, and records without consent or a known label are not exportable.
 
-- [ ] **Step 2: Run focused tests and verify they fail before implementation**
+- [x] **Step 2: Run focused tests and verify they fail before implementation**
 
 Run: `node --test tests/sign-pilot-preprocess.test.mjs`.  
 Expected: FAIL because the capture/preprocess module is not present.
 
-- [ ] **Step 3: Implement explicit one-sign recording controls**
+- [x] **Step 3: Implement explicit one-sign recording controls**
 
 The page has “Kamerayı aç”, “Bir işareti kaydet”, “Kaydı bitir”, “Dışa aktar”, and “Bu oturumun verisini sil” controls. The signer starts/stops each clip manually; no always-on recognition or raw video recording is added. Label and condition choices come only from the advisor-approved pilot manifest.
 
-- [ ] **Step 4: Implement local landmark extraction and export**
+- [x] **Step 4: Implement local landmark extraction and export**
 
 Load pinned MediaPipe runtime/model assets from local files, process frames in the browser, append landmark arrays to an in-memory record, validate before export, and release camera tracks when stopping or leaving the page. Download one JSONL file only after explicit export action.
 
@@ -110,7 +110,7 @@ Load pinned MediaPipe runtime/model assets from local files, process frames in t
 Run: `node --test tests/sign-pilot-preprocess.test.mjs`.  
 Serve the tool from `http://localhost` and verify camera permission, start/stop, export validation, delete-session, page-close track stop, and no video request to an external origin. Record no participant data in the manual test.
 
-- [ ] **Step 6: Commit the collection tool**
+- [x] **Step 6: Commit the collection tool**
 
 ```powershell
 git add tools/sign_pilot tests/sign-pilot-preprocess.test.mjs

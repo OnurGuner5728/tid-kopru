@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import math
 import re
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 
 
 SCHEMA_VERSION = "1.0"
@@ -82,7 +82,7 @@ def _is_finite_number(value: object) -> bool:
     return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value)
 
 
-def _validate_record(record: object, signers: set[str], allowed_signs: set[str], errors: list[str]) -> None:
+def _validate_record(record: object, signers: set[str], allowed_signs: set[str], allowed_conditions: dict[str, set[str]] | None, errors: list[str]) -> None:
     if not isinstance(record, dict):
         _add(errors, "invalid_record")
         return
@@ -138,6 +138,8 @@ def _validate_record(record: object, signers: set[str], allowed_signs: set[str],
             _add(errors, "invalid_conditions")
         elif any(not isinstance(value, str) or not _CODE.fullmatch(value) for value in conditions.values()):
             _add(errors, "invalid_conditions")
+        elif allowed_conditions is not None and any(value not in allowed_conditions.get(field, set()) for field, value in conditions.items()):
+            _add(errors, "invalid_conditions")
 
     frames = record.get("frames")
     if "frames" in record:
@@ -183,7 +185,7 @@ def _validate_record(record: object, signers: set[str], allowed_signs: set[str],
                         _add(errors, "invalid_visibility")
 
 
-def validate_dataset(records: object, signers: Iterable[str], allowed_signs: Iterable[str]) -> list[str]:
+def validate_dataset(records: object, signers: Iterable[str], allowed_signs: Iterable[str], allowed_conditions: Mapping[str, Iterable[str]] | None = None) -> list[str]:
     """Return stable validation error codes for a list of consent-coded records.
 
     Signers and allowed signs are supplied by a separately approved manifest.
@@ -196,6 +198,13 @@ def validate_dataset(records: object, signers: Iterable[str], allowed_signs: Ite
 
     signer_codes = _codes(signers)
     sign_ids = _codes(allowed_signs)
+    condition_codes: dict[str, set[str]] | None = None
+    if allowed_conditions is not None:
+        if not isinstance(allowed_conditions, Mapping) or set(allowed_conditions) != _CONDITION_FIELDS:
+            _add(errors, "invalid_condition_manifest")
+            condition_codes = {}
+        else:
+            condition_codes = {field: _codes(allowed_conditions[field]) for field in _CONDITION_FIELDS}
     for record in records:
-        _validate_record(record, signer_codes, sign_ids, errors)
+        _validate_record(record, signer_codes, sign_ids, condition_codes, errors)
     return errors

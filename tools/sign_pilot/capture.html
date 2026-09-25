@@ -1,0 +1,270 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <title>TİD Köprü — yerel pilot kayıt aracı</title>
+  <style>
+    :root { color-scheme: light; font-family: system-ui, sans-serif; background: #f5f7fb; color: #182334; }
+    body { max-width: 760px; margin: 0 auto; padding: 1.25rem; line-height: 1.55; }
+    h1 { font-size: clamp(1.5rem, 4vw, 2rem); }
+    .card { background: white; border: 1px solid #d7deea; border-radius: 1rem; padding: 1rem; margin: 1rem 0; }
+    .notice { border-left: 5px solid #b35b00; background: #fff7e9; padding: .85rem 1rem; }
+    label { display: block; margin: .75rem 0 .25rem; font-weight: 650; }
+    input, select, button { font: inherit; }
+    input[type="text"], select { width: 100%; box-sizing: border-box; min-height: 2.75rem; padding: .5rem; border: 1px solid #8a99ad; border-radius: .5rem; background: white; }
+    input[type="checkbox"] { width: 1.25rem; height: 1.25rem; vertical-align: middle; }
+    button { min-height: 2.75rem; padding: .5rem .9rem; margin: .35rem .3rem .35rem 0; border: 0; border-radius: .5rem; color: white; background: #124f93; cursor: pointer; }
+    button.secondary { background: #45546a; }
+    button.danger { background: #8d2630; }
+    button:disabled { cursor: not-allowed; opacity: .5; }
+    video { display: block; width: 100%; max-height: 55vh; background: #101722; border-radius: .5rem; }
+    #status { min-height: 3rem; padding: .7rem; border-radius: .5rem; background: #e8eef7; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: .25rem 1rem; }
+    .small { font-size: .92rem; color: #344257; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>TİD Köprü — yerel pilot kayıt aracı</h1>
+    <p>Bu araç yalnızca danışman onaylı, izinli pilot hazırlığı içindir. Kamera kapalı başlar; tek bir işaret kaydı kullanıcı başlatır.</p>
+  </header>
+
+  <section class="card notice" aria-labelledby="privacy-heading">
+    <h2 id="privacy-heading">Gizlilik ve MediaPipe bilgisi</h2>
+    <p>Ham video veya ses kaydedilmez. İşaret landmarkları yalnızca bu tarayıcıdaki bellekte tutulur ve yalnızca “Dışa aktar” seçildiğinde JSONL olarak indirilir. Bu veriler yine de hassastır; onaylı saklama ve silme sürecine uyulmalıdır.</p>
+    <p>MediaPipe, görüntü girdisinin cihaz üzerinde işlendiğini ve Google sunucularına gönderilmediğini belirtir. Aynı şartlar, kullanım ve performans ölçümlerinin; uygulama/girdi türünün genel özelliklerinin ve sistem ortamının Google'a gönderilebileceğini de söyler. Aşağıdaki onay kutusu, katılımcı bilgilendirme/onamının bu açıklamayı içerdiğini doğrulamadan etkinleştirilmemelidir.</p>
+    <label><input id="metrics-consent" type="checkbox" disabled> Katılımcı bu MediaPipe ölçüm açıklamasını içeren onamı verdi.</label>
+  </section>
+
+  <p id="status" role="status" aria-live="polite">Kamera kapalı. Onaylı yerel kurulum dosyaları bekleniyor.</p>
+
+  <section class="card" aria-labelledby="session-heading">
+    <h2 id="session-heading">Kayıt bilgisi</h2>
+    <div class="grid">
+      <div><label for="signer">İşaretçi kodu</label><select id="signer" disabled></select></div>
+      <div><label for="consent">Onam kodu</label><select id="consent" disabled></select></div>
+      <div><label for="sign">Onaylı işaret</label><select id="sign" disabled></select></div>
+      <div><label for="lighting">Işık koşulu</label><select id="lighting" disabled></select></div>
+      <div><label for="distance">Kamera uzaklığı</label><select id="distance" disabled></select></div>
+      <div><label for="background">Arka plan</label><select id="background" disabled></select></div>
+    </div>
+  </section>
+
+  <section class="card" aria-labelledby="camera-heading">
+    <h2 id="camera-heading">Kamera</h2>
+    <video id="preview" muted playsinline aria-label="Canlı kamera önizlemesi"></video>
+    <button id="open-camera" disabled>Kamerayı aç</button>
+    <button id="close-camera" class="secondary" disabled>Kamerayı kapat</button>
+    <button id="start-record" disabled>Bir işareti kaydet</button>
+    <button id="stop-record" class="secondary" disabled>Kaydı bitir</button>
+    <p class="small">Kamera izni yalnızca “Kamerayı aç” seçildiğinde istenir. “Bir işareti kaydet” başlamadan görüntüden landmark çıkarılmaz. Durdurmak veya sayfadan ayrılmak kamera izlerini kapatır.</p>
+  </section>
+
+  <section class="card" aria-labelledby="export-heading">
+    <h2 id="export-heading">Oturum verisi</h2>
+    <p id="record-count">Bu oturumda onaylanmış kayıt yok.</p>
+    <button id="export" disabled>Dışa aktar</button>
+    <button id="delete-session" class="danger" disabled>Bu oturumun verisini sil</button>
+    <p class="small">Oturum verisi tarayıcı depolamasına yazılmaz. Sayfa kapanınca bellek boşaltılır. İndirilen JSONL dosyasını onamda belirtilen süre içinde korumalı yerde saklayın.</p>
+  </section>
+
+  <script type="module">
+    import { exportLandmarkRecords, startCapture, stopCapture, validateLandmarkRecords } from "./capture.mjs";
+
+    const $ = (id) => document.getElementById(id);
+    const status = $("status");
+    const video = $("preview");
+    const controls = {
+      metrics: $("metrics-consent"), signer: $("signer"), consent: $("consent"), sign: $("sign"),
+      lighting: $("lighting"), distance: $("distance"), background: $("background"),
+      open: $("open-camera"), close: $("close-camera"), startRecord: $("start-record"),
+      stopRecord: $("stop-record"), export: $("export"), remove: $("delete-session"), count: $("record-count"),
+    };
+    let pilotManifest = null;
+    let assetManifest = null;
+    let cameraOpen = false;
+    let recording = false;
+    let currentRecord = null;
+    let records = [];
+
+    function setStatus(message) { status.textContent = message; }
+    function addOptions(select, values) {
+      select.replaceChildren(new Option("Seçin", ""));
+      for (const value of values) select.add(new Option(value, value));
+      select.disabled = false;
+    }
+    function refreshControls() {
+      const disclosureAccepted = controls.metrics.checked;
+      const consentAvailable = pilotManifestReady && pilotManifest.consentCodes.includes(controls.consent.value);
+      controls.open.disabled = cameraOpen || !pilotManifestReady || !assetManifest || !consentAvailable || !disclosureAccepted;
+      controls.close.disabled = !cameraOpen;
+      const conditionsSelected = Boolean(controls.lighting.value && controls.distance.value && controls.background.value);
+      controls.startRecord.disabled = !cameraOpen || recording || !consentAvailable || !controls.signer.value || !controls.sign.value || !conditionsSelected;
+      controls.stopRecord.disabled = !recording;
+      controls.export.disabled = records.length === 0;
+      controls.remove.disabled = records.length === 0 && !recording && !cameraOpen;
+    }
+    function showCount() {
+      controls.count.textContent = records.length === 0
+        ? "Bu oturumda onaylanmış kayıt yok."
+        : records.length + " onaylanmış landmark kaydı bellekte tutuluyor.";
+      refreshControls();
+    }
+    function valuesFrom(name) {
+      return pilotManifest.conditions[name];
+    }
+    function mapResultFrame(frame) {
+      if (recording && currentRecord) currentRecord.frames.push(frame);
+    }
+    function failCapture(error) {
+      recording = false;
+      currentRecord = null;
+      cameraOpen = false;
+      setStatus("İşlem durdu: " + (error?.message || "bilinmeyen hata") + " Kamera kapatıldı; kayıt dışa aktarılmadı.");
+      refreshControls();
+    }
+
+    for (const id of ["metrics", "signer", "consent", "sign", "lighting", "distance", "background"]) {
+      controls[id].addEventListener("change", refreshControls);
+    }
+
+    try {
+      if (!["localhost", "127.0.0.1", "::1", "[::1]"].includes(location.hostname) || !isSecureContext) {
+        throw new Error("Bu kayıt aracı yalnızca güvenli yerel localhost adresinde çalışır.");
+      }
+      const [pilotResponse, assetsResponse] = await Promise.all([
+        fetch("./pilot-manifest.json", { credentials: "same-origin", cache: "no-store" }),
+        fetch("./mediapipe-assets.json", { credentials: "same-origin", cache: "no-store" }),
+      ]);
+      if (!pilotResponse.ok || !assetsResponse.ok) throw new Error("Danışman onaylı pilot-manifest.json ve hash listeli mediapipe-assets.json dosyaları henüz kurulmamış.");
+      pilotManifest = await pilotResponse.json();
+      assetManifest = await assetsResponse.json();
+      if (pilotManifest.approved !== true || pilotManifest.schemaVersion !== "1.0") throw new Error("Pilot manifest danışman onayı içermediği için kayıt devre dışı.");
+      if (!Array.isArray(pilotManifest.signers) || pilotManifest.signers.length === 0
+        || !Array.isArray(pilotManifest.allowedSigns) || pilotManifest.allowedSigns.length === 0
+        || !Array.isArray(pilotManifest.consentCodes) || pilotManifest.consentCodes.length === 0) throw new Error("Pilot manifest kod listeleri geçersiz.");
+      if (!pilotManifest.conditions || ["lighting", "distance", "background"].some((field) => !Array.isArray(pilotManifest.conditions[field]) || pilotManifest.conditions[field].length === 0)) throw new Error("Danışman onaylı çekim koşulları eksik.");
+      if (!pilotManifest.metricsDisclosureNoticeId || !pilotManifest.preprocessVersion || !pilotManifest.landmarkIndices) throw new Error("Onam bildirimi veya landmark sürümü eksik.");
+      if (!assetManifest.runtimeVersion || !assetManifest.runtimeUrl || !assetManifest.runtimeSha256
+        || !assetManifest.wasmRoot || !assetManifest.modelUrl || !assetManifest.modelSha256) throw new Error("Yerel MediaPipe dosyalarının sürüm/hash bildirimi eksik.");
+      addOptions(controls.signer, pilotManifest.signers);
+      addOptions(controls.consent, pilotManifest.consentCodes);
+      addOptions(controls.sign, pilotManifest.allowedSigns);
+      addOptions(controls.lighting, valuesFrom("lighting"));
+      addOptions(controls.distance, valuesFrom("distance"));
+      addOptions(controls.background, valuesFrom("background"));
+      pilotManifestReady = true;
+      controls.metrics.disabled = false;
+      setStatus("Yerel kurulum yüklendi. Kamera kapalı; devam etmeden önce katılımcı onamını doğrulayın.");
+    } catch (error) {
+      setStatus(error.message + " Kod ve işaret listeleri uydurulmaz; danışman onayı olmadan kamera açılmaz.");
+    }
+    refreshControls();
+
+    controls.open.addEventListener("click", async () => {
+      try {
+        setStatus("Yerel model doğrulanıyor. Bu aşamada kamera izni istenmiyor.");
+        await startCapture({
+          videoElement: video,
+          manifest: pilotManifest,
+          assetManifest,
+          consentCode: controls.consent.value,
+          metricsDisclosureAccepted: controls.metrics.checked,
+          shouldProcessFrame: () => recording,
+          onFrame: mapResultFrame,
+          onError: failCapture,
+        });
+        cameraOpen = true;
+        setStatus("Kamera açık. Landmark çıkarımı kapalı bekliyor; bir işaret kaydı başlatabilirsiniz.");
+        refreshControls();
+      } catch (error) { failCapture(error); }
+    });
+
+    controls.close.addEventListener("click", async () => {
+      await stopCapture();
+      cameraOpen = false;
+      recording = false;
+      currentRecord = null;
+      setStatus("Kamera kapatıldı. Devam eden kayıt atıldı.");
+      refreshControls();
+    });
+
+    controls.startRecord.addEventListener("click", () => {
+      const conditions = {
+        lightingCode: controls.lighting.value,
+        distanceCode: controls.distance.value,
+        backgroundCode: controls.background.value,
+      };
+      if (Object.values(conditions).some((value) => !value)) {
+        setStatus("Önce danışmanın onayladığı üç çekim koşulunu seçin.");
+        return;
+      }
+      const repetition = records.filter((record) => record.signerCode === controls.signer.value && record.signId === controls.sign.value).length + 1;
+      currentRecord = {
+        schemaVersion: "1.0",
+        signerCode: controls.signer.value,
+        consentCode: controls.consent.value,
+        signId: controls.sign.value,
+        repetition,
+        conditions,
+        fps: 0,
+        frames: [],
+        preprocessVersion: pilotManifest.preprocessVersion,
+      };
+      recording = true;
+      setStatus("Kayıt başladı. İşaret bittiğinde “Kaydı bitir” düğmesine basın.");
+      refreshControls();
+    });
+
+    controls.stopRecord.addEventListener("click", () => {
+      recording = false;
+      if (!currentRecord || currentRecord.frames.length < 2) {
+        currentRecord = null;
+        setStatus("Kayıt en az iki ölçümlü kare içermedi; veri kaydedilmedi.");
+        refreshControls();
+        return;
+      }
+      const first = currentRecord.frames[0].timestampMs;
+      const last = currentRecord.frames[currentRecord.frames.length - 1].timestampMs;
+      currentRecord.fps = (currentRecord.frames.length - 1) * 1000 / (last - first);
+      const errors = validateLandmarkRecords([currentRecord], pilotManifest);
+      if (errors.length) {
+        currentRecord = null;
+        setStatus("Kayıt doğrulanamadı ve atıldı: " + errors.join(", "));
+        refreshControls();
+        return;
+      }
+      records.push(currentRecord);
+      currentRecord = null;
+      setStatus("Kayıt doğrulandı ve yalnızca bu oturumun belleğine eklendi.");
+      showCount();
+    });
+
+    controls.export.addEventListener("click", () => {
+      try {
+        const jsonl = exportLandmarkRecords(records, pilotManifest);
+        const blob = new Blob([jsonl], { type: "application/x-ndjson;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+        const anchor = document.createElement("a");
+        anchor.href = url;
+        anchor.download = "tid-kopru-landmarks-" + new Date().toISOString().slice(0, 10) + ".jsonl";
+        anchor.click();
+        URL.revokeObjectURL(url);
+        setStatus("Doğrulanmış landmark kayıtları indirildi. Ham video veya ses dosyası oluşturulmadı.");
+      } catch (error) { setStatus("Dışa aktarma reddedildi: " + error.message); }
+    });
+
+    controls.remove.addEventListener("click", async () => {
+      await stopCapture();
+      cameraOpen = false;
+      recording = false;
+      currentRecord = null;
+      records = [];
+      showCount();
+      setStatus("Oturum belleği silindi ve kamera kapatıldı.");
+    });
+  </script>
+</body>
+</html>

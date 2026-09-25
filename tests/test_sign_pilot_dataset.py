@@ -65,5 +65,17 @@ class ValidateDatasetTests(unittest.TestCase):
         self.assertIn("personal_data_field", self.validate(record))
 
 
+    def test_rejects_condition_codes_outside_approved_manifest(self):
+        errors = validate_dataset(
+            [self.record],
+            self.signers,
+            self.allowed_signs,
+            allowed_conditions={
+                "lightingCode": {"L2"},
+                "distanceCode": {"D1"},
+                "backgroundCode": {"B1"},
+            },
+        )
+        self.assertIn("invalid_conditions", errors)
 if __name__ == "__main__":
     unittest.main()

@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "1.0",
+  "approved": false,
+  "advisorApprovalCode": "",
+  "preprocessVersion": "",
+  "signers": [],
+  "allowedSigns": [],
+  "consentCodes": [],
+  "metricsDisclosureNoticeId": "",
+  "conditions": { "lighting": [], "distance": [], "background": [] },
+  "landmarkIndices": { "pose": [], "leftHand": [], "rightHand": [], "face": [] }
+}

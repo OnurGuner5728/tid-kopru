@@ -13,12 +13,26 @@ Bu klasör yalnızca veri biçimini ve yerel doğrulamayı tanımlar. İçindeki
 
 ## Kayıt biçimi
 
-`schema.json` kayıt yapısını tanımlar. `validate_dataset(records, signers, allowed_signs)` ek olarak sürüm, onam kodu, işaretçi/işaret listesi üyeliği, sonlu koordinatları, görünürlük maskelerini ve zaman damgalarını denetler. Her koordinat grubu 3 değerli (x, y, z) noktalar halinde düzleştirilir; karşılık gelen görünürlük maskesinde her nokta için 0 veya 1 bulunur. Eksik nokta sıfır koordinatla ve görünürlük değeri 0 ile gösterilir.
+`schema.json` kayıt yapısını tanımlar. `validate_dataset(records, signers, allowed_signs, allowed_conditions=None)` ek olarak sürüm, onam kodu, işaretçi/işaret listesi üyeliği, sonlu koordinatları, görünürlük maskelerini ve zaman damgalarını denetler. Her koordinat grubu 3 değerli (x, y, z) noktalar halinde düzleştirilir; karşılık gelen görünürlük maskesinde her nokta için 0 veya 1 bulunur. Eksik nokta sıfır koordinatla ve görünürlük değeri 0 ile gösterilir.
 
-İzinli işaret ve işaretçi kodları bu fonksiyona ayrı, danışman/onam sürecinden gelen manifestolarla verilir. Fonksiyon veri yapısını denetler; iznin gerçekliğini veya kapsamının yeterliliğini doğrulayamaz.
+İzinli işaret ve işaretçi kodları bu fonksiyona ayrı, danışman/onam sürecinden gelen manifestolarla verilir. Onaylı koşul kodları da allowed_conditions ile sağlanır; verilmediğinde yalnızca koşul alanlarının biçimi denetlenir. Fonksiyon veri yapısını denetler; iznin gerçekliğini veya kapsamının yeterliliğini doğrulayamaz.
 
 Şema testlerini çalıştırmak için proje kökünde:
 
 ```powershell
 python -m unittest discover -s tests -p test_sign_pilot_dataset.py -v
 ```
+
+## Yerel kayıt aracı
+
+capture.html yalnızca localhost üzerinde çalışır. Uygulama açıldığında kamera izni istemez. Kayıt için danışman onaylı pilot-manifest.json, hash değerleri doğrulanmış aynı-kaynak MediaPipe dosyaları için mediapipe-assets.json ve katılımcı onamında MediaPipe ölçüm açıklamasının yer alması gerekir. Örnek yapı dosyaları pilot-manifest.example.json ve mediapipe-assets.example.json içindedir. Örneklerde gerçek işaret, katılımcı veya model bilgisi yoktur. Özel dosyalar .gitignore altında tutulur.
+
+Yerel deneme sunucusunu proje kökünde şu komutla başlatın: python tools/serve.py --port 8120 --directory tools/sign_pilot. Ardından http://localhost:8120/capture.html sayfasını açın. Yerel MediaPipe runtime ve model dosyaları izin/lisans incelemesi tamamlanmadan depoya eklenmez. Dosyalar onaylanıp yerel assets klasörüne konduğunda mediapipe-assets.json içindeki yollar, tam sürüm ve SHA-256 değerleri eşleşmelidir; uzak URL'ler hashleri doğru olsa bile reddedilir.
+
+Kamera yalnızca “Kamerayı aç” seçildiğinde istenir. Yerel model doğrulanıp yüklendikten sonra kamera izni sorulur. Önizleme açıkken çıkarım yapılmaz; “Bir işareti kaydet” seçimiyle başlar ve yalnız landmark dizileri belleğe alınır. Kaydı bitirince kayıt Python sözleşmesiyle aynı kurallara göre tarayıcıda doğrulanır. Ham kare, video ve ses dışa aktarılmaz. “Dışa aktar” JSONL indirir; “Bu oturumun verisini sil”, kamera izlerini kapatıp belleği temizler. Sayfadan çıkış da kamera izlerini durdurur.
+
+MediaPipe şartları görüntü girdisinin cihaz üzerinde işlendiğini ve Google'a gönderilmediğini söyler; ayrıca kullanım/performance ölçümleri, uygulama ve girdi türünün genel özellikleri ile sistem ortamının Google'a iletilebileceğini, bu işleme için bilgilendirilmiş onam gerektiğini bildirir. Bu nedenle araç, kamera açılmadan önce açıklama onayı arar. Bu ölçüm trafiği nedeniyle araca “hiçbir ağ bağlantısı kurmaz” denmemelidir. Ayrıntı: https://developers.google.com/edge/mediapipe/legal/tos .
+
+MediaPipe Web kılavuzu Holistic Landmarker'ı @mediapipe/tasks-vision paketi ve yerel model bundle'ı ile çalıştırmayı tarif eder: https://developers.google.com/edge/mediapipe/solutions/vision/holistic_landmarker/web_js . Kılavuz model dosyasını projede kullanmayı anlatır; dağıtım ve yeniden dağıtım hakları ise ayrıca doğrulanmalıdır. Bu doğrulama, danışman onaylı landmark alt kümesi, gerçek katılımcı onamı ve Android ölçümü tamamlanmadan bu araç gerçek veri toplamaya hazır sayılmaz. Ana PWA'da kamera tanıma etkin değildir.
+
+Tarayıcı mantık testleri: node --test tests/sign-pilot-preprocess.test.mjs . Bu testler yalnız sentetik şema verisi ve sahte kamera akışı kullanır; bilgisayar kamerasını açmaz.
