@@ -7,7 +7,6 @@ import json
 import os
 import random
 import tempfile
-from collections import Counter
 from pathlib import Path
 from typing import Sequence
 
@@ -17,6 +16,7 @@ from torch import nn
 from torch.utils.data import DataLoader, TensorDataset
 
 from tools.sign_pilot.validate_dataset import validate_dataset
+from tools.sign_pilot.capture_contract import capture_contract_sha256_from_manifest
 from tools.sign_model.preprocess import (
     apply_feature_scaler, build_feature_names, fit_feature_scaler, preprocess_record,
     preprocessing_hash, preprocessing_manifest,
@@ -64,6 +64,32 @@ class TemporalSignCNN(nn.Module):
         if values.dtype != torch.float32 or not torch.isfinite(values).all():
             raise ValueError("input must contain finite float32 values")
         return self.encoder(values.transpose(1, 2).contiguous())
+
+
+def collection_protocol_errors(records, signers, approved_signs, condition_codes, *, minimum_repetitions=10):
+    """Require ten distinct performances and per-sign coverage of all approved condition levels."""
+    repetitions = {}
+    for item in records:
+        if not isinstance(item, dict) or not isinstance(item.get("signerCode"), str) or not isinstance(item.get("signId"), str):
+            continue
+        repetition = item.get("repetition")
+        if isinstance(repetition, int) and not isinstance(repetition, bool):
+            repetitions.setdefault((item["signerCode"], item["signId"]), set()).add(repetition)
+    errors = []
+    if any(len(repetitions.get((signer, sign_id), set())) < minimum_repetitions
+           for signer in signers for sign_id in approved_signs):
+        errors.append("dataset_requires_10_distinct_repetitions_per_signer_and_sign")
+    for sign_id in approved_signs:
+        sign_records = [item for item in records if isinstance(item, dict) and item.get("signId") == sign_id]
+        for field, approved_values in condition_codes.items():
+            present = {
+                item.get("conditions", {}).get(field)
+                for item in sign_records if isinstance(item.get("conditions"), dict)
+            }
+            required_values = {value for value in approved_values if isinstance(value, str)}
+            if not required_values.issubset(present):
+                errors.append("condition_coverage_missing:" + sign_id + ":" + field)
+    return errors
 
 
 def predict_with_rejection(logits, class_ids, confidence_threshold, approved_signs=None):
@@ -128,18 +154,31 @@ def training_gate_errors(manifest, records, *, repo_root=None, dataset_path=None
     if not isinstance(records, Sequence) or not records:
         errors.append("dataset_missing")
         records = []
+    expected_capture_contract = None
+    try:
+        expected_capture_contract = capture_contract_sha256_from_manifest(manifest)
+    except (TypeError, ValueError):
+        errors.append("capture_contract_identity_missing")
+    declared_capture_contract = manifest.get("captureContractSha256")
+    if (not isinstance(declared_capture_contract, str)
+            or len(declared_capture_contract) != 64
+            or any(character not in "0123456789abcdefABCDEF" for character in declared_capture_contract)
+            or expected_capture_contract is None
+            or declared_capture_contract.lower() != expected_capture_contract):
+        errors.append("capture_contract_manifest_mismatch")
     if records:
         labels = [*signs, *RESERVED_LABELS]
-        errors.extend("dataset:" + code for code in validate_dataset(records, signers, labels, allowed_conditions=condition_codes))
+        errors.extend("dataset:" + code for code in validate_dataset(
+            records, signers, labels, allowed_conditions=condition_codes,
+            expected_capture_contract_sha256=expected_capture_contract,
+        ))
         if any(not isinstance(item, dict) or item.get("consentCode") not in consents for item in records):
             errors.append("record_consent_not_in_manifest")
         if any(not isinstance(item, dict) or item.get("preprocessVersion") != manifest.get("preprocessVersion") for item in records):
             errors.append("record_preprocessing_version_mismatch")
         if len({item.get("signerCode") for item in records if isinstance(item, dict) and isinstance(item.get("signerCode"), str)}) < 20:
             errors.append("dataset_requires_at_least_20_signers")
-        repetitions = Counter((item.get("signerCode"), item.get("signId")) for item in records if isinstance(item, dict) and isinstance(item.get("signerCode"), str) and isinstance(item.get("signId"), str))
-        if signs and any(repetitions[(signer, sign_id)] < 10 for signer in signers for sign_id in signs):
-            errors.append("dataset_requires_10_repetitions_per_signer_and_sign")
+        errors.extend(collection_protocol_errors(records, signers, signs, condition_codes))
         if not set(RESERVED_LABELS).issubset({item.get("signId") for item in records if isinstance(item, dict) and isinstance(item.get("signId"), str)}):
             errors.append("blank_partial_unknown_examples_required")
         for label in RESERVED_LABELS:
@@ -181,21 +220,32 @@ def calibrate_confidence_threshold(validation_logits, true_labels, class_ids, ap
     logits = np.asarray(validation_logits, dtype=np.float32)
     if logits.ndim != 2 or logits.shape != (len(true_labels), len(class_ids)) or not np.isfinite(logits).all():
         raise ValueError("validation logits, labels, and class IDs must align")
+    missing_reject_labels = set(RESERVED_LABELS) - set(true_labels)
+    if missing_reject_labels:
+        raise ValueError("validation data must include each reserved class: " + ", ".join(sorted(missing_reject_labels)))
     valid_count = sum(label in approved_signs for label in true_labels)
-    negative_count = len(true_labels) - valid_count
-    if not valid_count or not negative_count:
-        raise ValueError("validation signers need approved and reject examples")
+    blank_unknown_indices = [index for index, label in enumerate(true_labels) if label in {"BLANK", "UNKNOWN"}]
+    partial_indices = [index for index, label in enumerate(true_labels) if label == "PARTIAL"]
+    if not valid_count or not blank_unknown_indices or not partial_indices:
+        raise ValueError("validation signers need approved, blank/unknown, and partial examples")
     probs = torch.softmax(torch.from_numpy(logits), dim=1).numpy()
     top = probs.argmax(axis=1)
     names = [class_ids[index] for index in top]
     confidences = probs.max(axis=1)
     best = None
     for threshold in (index / 1000 for index in range(1001)):
-        false_accepts = sum(name in approved_signs and confidence >= threshold and actual not in approved_signs
-                            for name, confidence, actual in zip(names, confidences, true_labels, strict=True))
+        false_accepts = sum(
+            names[index] in approved_signs and confidences[index] >= threshold
+            for index in blank_unknown_indices
+        )
+        partial_accepts = sum(
+            names[index] in approved_signs and confidences[index] >= threshold
+            for index in partial_indices
+        )
         accepted_signs = sum(actual in approved_signs and name in approved_signs and confidence >= threshold
                              for name, confidence, actual in zip(names, confidences, true_labels, strict=True))
-        if false_accepts / negative_count <= 0.05:
+        if (false_accepts / len(blank_unknown_indices) <= 0.05
+                and partial_accepts / len(partial_indices) <= 0.05):
             candidate = (accepted_signs, -threshold)
             if best is None or candidate > best[0]:
                 best = (candidate, threshold)
@@ -204,10 +254,30 @@ def calibrate_confidence_threshold(validation_logits, true_labels, class_ids, ap
     return best[1]
 
 
+def reserved_split_coverage_errors(splits):
+    """Return split-specific gaps for reserved reject classes required by calibration and evaluation."""
+    errors = []
+    if not isinstance(splits, dict):
+        return ["invalid_signer_splits"]
+    for split_name in ("train", "validation", "test"):
+        split = splits.get(split_name)
+        records = split.get("records") if isinstance(split, dict) else None
+        if not isinstance(records, list):
+            errors.append("split_records_missing:" + split_name)
+            continue
+        present = {record.get("signId") for record in records if isinstance(record, dict)}
+        errors.extend(
+            "split_missing_reserved_examples:" + split_name + ":" + label
+            for label in RESERVED_LABELS if label not in present
+        )
+    return errors
+
+
 def train_model(dataset_path, manifest, output_path, *, repo_root=None, epochs=50, batch_size=32, learning_rate=0.001):
     """Actual training entry point; all gates run before any optimizer step or output."""
     path, records = _read_jsonl_outside_repo(dataset_path, repo_root)
     validate_training_gate(manifest, records, repo_root=repo_root, dataset_path=path)
+    capture_contract_digest = capture_contract_sha256_from_manifest(manifest)
     source_dataset_digest = dataset_sha256(path)
     output = Path(output_path).resolve()
     root = Path(repo_root).resolve() if repo_root else Path(__file__).resolve().parents[2]
@@ -225,6 +295,9 @@ def train_model(dataset_path, manifest, output_path, *, repo_root=None, epochs=5
     torch.manual_seed(seed)
     splits = split_by_signer(records, seed=seed)
     assert_signer_disjoint(splits)
+    coverage_errors = reserved_split_coverage_errors(splits)
+    if coverage_errors:
+        raise TrainingGateError(coverage_errors)
     layout = manifest["landmarkIndices"]
     preproc = preprocessing_manifest(layout, 32)
     feature_names = preproc["featureNames"]
@@ -266,6 +339,7 @@ def train_model(dataset_path, manifest, output_path, *, repo_root=None, epochs=5
         "preprocessingManifest": preproc, "preprocessingHash": preprocessing_hash(preproc),
         "featureScaler": scaler, "confidenceThreshold": threshold, "randomSeed": seed,
         "datasetSha256": source_dataset_digest, "testClassificationSummary": test_summary,
+        "captureContractSha256": capture_contract_digest,
         "signerCodes": {name: splits[name]["signerCodes"] for name in ("train", "validation", "test")},
     }
     handle, temporary_name = tempfile.mkstemp(prefix=".sign-pilot-checkpoint-", dir=str(output.parent))

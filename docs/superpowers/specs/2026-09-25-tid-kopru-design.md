@@ -50,6 +50,12 @@ TİD bilen sağır danışman, gündelik 20 işaretin anlamını, varyantların�
 
 MediaPipe Holistic landmark zaman dizileri üzerinde bölütleme, sınıflandırma ve bilinmeyeni reddetme denenir. Ham video yalnızca açık izin ve tanımlı saklama süresi varsa tutulur; varsayılan çıkarım cihazda yapılır. Aynı örnekler için veri/ön işleme/model sürüm imzası korunur.
 
+Her kayıt, çekim protokolü ve landmark çıkarımının sabit parmak izini taşır; bu kimlik veri kaydından eğitim onayı, kontrol noktası, değerlendirme raporu ve model manifestine kadar doğrulanır. Parmak izi MediaPipe model/runtime dosyalarıyla seçilen WASM loader/binary dosyalarının sürüm ve hash değerlerini kapsar; başlatma hash'i kontrol edilen baytları kullanır. Boş/bilinmeyen yanlış kabul oranı kendi örnek kümesinde hesaplanır; kısmi işaretler ayrı raporlanır ve bunların boş/bilinmeyen oranını düşürmesine izin verilmez. Kısmi örnekler için ek ret eşiği geçici ve fail-closed bir korumadır; gerçek pilot metrikleri raporlanmadan önce TİD danışmanıyla ölçüt tanımı netleştirilir.
+
+Ölçüm aracının mevcut geçici kapsam alt sınırı 10 dakika ve dakikada en az 60 işlenmiş bir saniyelik boşta penceredir. Bu teknik alt sınır, onaylanmış pilot ölçüm protokolü sayılmaz; gerçek değerlendirmeden önce TİD danışmanı onayı gerekir. Model dışa aktarma rapor metriklerini checkpoint/held-out veri üzerinde yeniden hesaplar ve Android ölçüm dosyasının tam bayt hash'ini doğrular.
+
+Düşük güvenli önerilerin ret oranı mevcut Python hattında bir politika invariant'ıdır: eşik altındaki her tahmin zaten reddedilir. Bu sayı tek başına modelin belirsiz işaretleri anladığına kanıt değildir; gerçek tarayıcı/Android çalışma zamanı tutarlılığı Task D'deki held-out kliplerle ayrıca ölçülmelidir.
+
 **Pilot geçiş koşulları** (ürün planındaki eşikler):
 
 - İşaretçiden bağımsız final sette macro-F1 en az 0,80.

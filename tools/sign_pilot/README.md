@@ -13,6 +13,8 @@ Bu klasör yalnızca veri biçimini ve yerel doğrulamayı tanımlar. İçindeki
 
 ## Kayıt biçimi
 
+Kayıt şeması 1.1'dir. Her satır anonim ve tekil bir captureId ile captureContractSha256 parmak izini taşır. Parmak izi ön işleme sürümünü, sıralı landmark indekslerini, MediaPipe model/runtime sürümlerini, model/runtime hash değerlerini ve seçilen WASM loader/binary dosyalarının yollarıyla hashlerini kapsar. Yerel loader çözülen WASM dosyalarının hashlerini doğrular ve doğrulanmış baytları kullanır. Doğrulayıcı yinelenen tekrar numaralarını, captureId değerlerini ve zamanı/FPS'i değişse bile tekrar kullanılan landmark dizilerini reddeder; içerik karşılaştırması sıralı anahtarlara ve mikro ölçekte yuvarlanmış koordinatlara dayanır.
+
 `schema.json` kayıt yapısını tanımlar. `validate_dataset(records, signers, allowed_signs, allowed_conditions=None)` ek olarak sürüm, onam kodu, işaretçi/işaret listesi üyeliği, sonlu koordinatları, görünürlük maskelerini ve zaman damgalarını denetler. Her koordinat grubu 3 değerli (x, y, z) noktalar halinde düzleştirilir; karşılık gelen görünürlük maskesinde her nokta için 0 veya 1 bulunur. Eksik nokta sıfır koordinatla ve görünürlük değeri 0 ile gösterilir.
 
 İzinli işaret ve işaretçi kodları bu fonksiyona ayrı, danışman/onam sürecinden gelen manifestolarla verilir. Onaylı koşul kodları da allowed_conditions ile sağlanır; verilmediğinde yalnızca koşul alanlarının biçimi denetlenir. Fonksiyon veri yapısını denetler; iznin gerçekliğini veya kapsamının yeterliliğini doğrulayamaz.
@@ -24,6 +26,8 @@ python -m unittest discover -s tests -p test_sign_pilot_dataset.py -v
 ```
 
 ## Yerel kayıt aracı
+
+Varlık manifesti modelVersion ve runtimeVersion yanında runtime/model yollarını ve SHA-256 değerlerini, ayrıca runtime'ın yüklediği WASM JS/WASM dosyalarının yol/hash listesini taşır. Özel onay manifestindeki mediaPipeWasmFiles listesi bu seçilmiş dosya çiftini en az kapsamalıdır; SIMD ve SIMD olmayan dağıtım yapılıyorsa her iki çift de listelenebilir. captureContractSha256, yerel kayıt manifestiyle özel eğitim onay manifestinde aynı olmalıdır. Nihai landmark düzeni ve onaylı varlık kimlikleri özel approval manifestine yazıldıktan sonra şu komutla parmak izi hesaplanır: python -m tools.sign_pilot.capture_contract --manifest D:\tid-kopru-private\approval-manifest.json. Çıkan değer iki yerel manifestte de kullanılır.
 
 capture.html yalnızca localhost üzerinde çalışır. Uygulama açıldığında kamera izni istemez. Kayıt için danışman onaylı pilot-manifest.json, hash değerleri doğrulanmış aynı-kaynak MediaPipe dosyaları için mediapipe-assets.json ve katılımcı onamında MediaPipe ölçüm açıklamasının yer alması gerekir. Örnek yapı dosyaları pilot-manifest.example.json ve mediapipe-assets.example.json içindedir. Örneklerde gerçek işaret, katılımcı veya model bilgisi yoktur. Özel dosyalar .gitignore altında tutulur.
 

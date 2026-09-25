@@ -71,7 +71,8 @@
   </section>
 
   <script type="module">
-    import { exportLandmarkRecords, startCapture, stopCapture, validateLandmarkRecords } from "./capture.mjs";
+    import { exportLandmarkRecords, SCHEMA_VERSION, startCapture, stopCapture, validateLandmarkRecords } from "./capture.mjs";
+    import { captureContractSha256, createCaptureId } from "./capture-contract.mjs";
 
     const $ = (id) => document.getElementById(id);
     const status = $("status");
@@ -83,8 +84,12 @@
       stopRecord: $("stop-record"), export: $("export"), remove: $("delete-session"), count: $("record-count"),
     };
     let pilotManifest = null;
+    let pilotManifestReady = false;
     let assetManifest = null;
+    let captureContractDigest = null;
     let cameraOpen = false;
+    let cameraStarting = false;
+    let cameraCancelling = false;
     let recording = false;
     let currentRecord = null;
     let records = [];
@@ -98,8 +103,8 @@
     function refreshControls() {
       const disclosureAccepted = controls.metrics.checked;
       const consentAvailable = pilotManifestReady && pilotManifest.consentCodes.includes(controls.consent.value);
-      controls.open.disabled = cameraOpen || !pilotManifestReady || !assetManifest || !consentAvailable || !disclosureAccepted;
-      controls.close.disabled = !cameraOpen;
+      controls.open.disabled = cameraOpen || cameraStarting || !pilotManifestReady || !assetManifest || !consentAvailable || !disclosureAccepted;
+      controls.close.disabled = cameraCancelling || (!cameraOpen && !cameraStarting);
       const conditionsSelected = Boolean(controls.lighting.value && controls.distance.value && controls.background.value);
       controls.startRecord.disabled = !cameraOpen || recording || !consentAvailable || !controls.signer.value || !controls.sign.value || !conditionsSelected;
       controls.stopRecord.disabled = !recording;
@@ -122,6 +127,8 @@
       recording = false;
       currentRecord = null;
       cameraOpen = false;
+      cameraStarting = false;
+      cameraCancelling = false;
       setStatus("İşlem durdu: " + (error?.message || "bilinmeyen hata") + " Kamera kapatıldı; kayıt dışa aktarılmadı.");
       refreshControls();
     }
@@ -147,8 +154,19 @@
         || !Array.isArray(pilotManifest.consentCodes) || pilotManifest.consentCodes.length === 0) throw new Error("Pilot manifest kod listeleri geçersiz.");
       if (!pilotManifest.conditions || ["lighting", "distance", "background"].some((field) => !Array.isArray(pilotManifest.conditions[field]) || pilotManifest.conditions[field].length === 0)) throw new Error("Danışman onaylı çekim koşulları eksik.");
       if (!pilotManifest.metricsDisclosureNoticeId || !pilotManifest.preprocessVersion || !pilotManifest.landmarkIndices) throw new Error("Onam bildirimi veya landmark sürümü eksik.");
-      if (!assetManifest.runtimeVersion || !assetManifest.runtimeUrl || !assetManifest.runtimeSha256
+      if (!assetManifest.modelVersion || !assetManifest.runtimeVersion || !assetManifest.runtimeUrl || !assetManifest.runtimeSha256
+        || !Array.isArray(assetManifest.wasmFiles) || assetManifest.wasmFiles.length < 2
         || !assetManifest.wasmRoot || !assetManifest.modelUrl || !assetManifest.modelSha256) throw new Error("Yerel MediaPipe dosyalarının sürüm/hash bildirimi eksik.");
+      captureContractDigest = await captureContractSha256({
+        preprocessVersion: pilotManifest.preprocessVersion,
+        landmarkIndices: pilotManifest.landmarkIndices,
+        modelVersion: assetManifest.modelVersion,
+        runtimeVersion: assetManifest.runtimeVersion,
+        runtimeSha256: assetManifest.runtimeSha256,
+        modelSha256: assetManifest.modelSha256,
+        wasmFiles: assetManifest.wasmFiles,
+      });
+      if (captureContractDigest !== pilotManifest.captureContractSha256) throw new Error("Onaylı çekim sözleşmesi; sıralı landmarklar veya MediaPipe hash değerleriyle eşleşmiyor.");
       addOptions(controls.signer, pilotManifest.signers);
       addOptions(controls.consent, pilotManifest.consentCodes);
       addOptions(controls.sign, pilotManifest.allowedSigns);
@@ -164,6 +182,9 @@
     refreshControls();
 
     controls.open.addEventListener("click", async () => {
+      cameraStarting = true;
+      cameraCancelling = false;
+      refreshControls();
       try {
         setStatus("Yerel model doğrulanıyor. Bu aşamada kamera izni istenmiyor.");
         await startCapture({
@@ -176,18 +197,38 @@
           onFrame: mapResultFrame,
           onError: failCapture,
         });
+        cameraStarting = false;
         cameraOpen = true;
         setStatus("Kamera açık. Landmark çıkarımı kapalı bekliyor; bir işaret kaydı başlatabilirsiniz.");
         refreshControls();
-      } catch (error) { failCapture(error); }
+      } catch (error) {
+        cameraStarting = false;
+        cameraCancelling = false;
+        if (error.code === "capture_cancelled") {
+          setStatus("Kamera açılışı durduruldu; kamera kapalı.");
+          refreshControls();
+        } else {
+          failCapture(error);
+        }
+      }
     });
 
     controls.close.addEventListener("click", async () => {
+      const wasStarting = cameraStarting;
+      if (wasStarting) {
+        cameraCancelling = true;
+        setStatus("Kamera açılışı durduruluyor.");
+        refreshControls();
+      }
       await stopCapture();
       cameraOpen = false;
-      recording = false;
-      currentRecord = null;
-      setStatus("Kamera kapatıldı. Devam eden kayıt atıldı.");
+      if (!wasStarting) {
+        cameraStarting = false;
+        cameraCancelling = false;
+        recording = false;
+        currentRecord = null;
+        setStatus("Kamera kapatıldı. Devam eden kayıt atıldı.");
+      }
       refreshControls();
     });
 
@@ -203,7 +244,9 @@
       }
       const repetition = records.filter((record) => record.signerCode === controls.signer.value && record.signId === controls.sign.value).length + 1;
       currentRecord = {
-        schemaVersion: "1.0",
+        schemaVersion: SCHEMA_VERSION,
+        captureId: createCaptureId(),
+        captureContractSha256: captureContractDigest,
         signerCode: controls.signer.value,
         consentCode: controls.consent.value,
         signId: controls.sign.value,

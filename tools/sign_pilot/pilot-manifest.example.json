@@ -7,6 +7,7 @@
   "allowedSigns": [],
   "consentCodes": [],
   "metricsDisclosureNoticeId": "",
+  "captureContractSha256": "",
   "conditions": { "lighting": [], "distance": [], "background": [] },
   "landmarkIndices": { "pose": [], "leftHand": [], "rightHand": [], "face": [] }
 }

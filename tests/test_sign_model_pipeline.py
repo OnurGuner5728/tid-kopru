@@ -1,16 +1,21 @@
+import hashlib
 import unittest
 
 import torch
 
 from tools.sign_model.evaluate import evaluate_pilot_metrics
-from tools.sign_model.train import TemporalSignCNN, TrainingGateError, predict_with_rejection, validate_training_gate
+from tools.sign_model.train import (
+    TemporalSignCNN, TrainingGateError, collection_protocol_errors, predict_with_rejection,
+    reserved_split_coverage_errors, validate_training_gate,
+)
 from tools.sign_model.preprocess import (
     build_feature_names,
     preprocess_record,
     preprocessing_hash,
     preprocessing_manifest,
 )
-from tools.sign_model.split_by_signer import split_by_signer
+from tools.sign_model.split_by_signer import assert_signer_disjoint, split_by_signer
+from tools.sign_pilot.capture_contract import capture_contract_sha256
 
 
 LANDMARK_INDICES = {
@@ -19,11 +24,17 @@ LANDMARK_INDICES = {
     "rightHand": [0],
     "face": [],
 }
+WASM_FILES = [
+    {"path": "vision_wasm_internal.js", "sha256": "c" * 64},
+    {"path": "vision_wasm_internal.wasm", "sha256": "d" * 64},
+]
 
 
 def record(signer, sign):
     return {
-        "schemaVersion": "1.0",
+        "schemaVersion": "1.1",
+        "captureId": hashlib.sha256((signer + ":" + sign).encode("utf-8")).hexdigest()[:32],
+        "captureContractSha256": "a" * 64,
         "signerCode": signer,
         "consentCode": "C01",
         "signId": sign,
@@ -73,8 +84,13 @@ def make_test_onnx(manifest, overrides=None):
     model = helper.make_model(graph, opset_imports=[helper.make_opsetid("", 17)])
     metadata = {
         "tidkopru.modelVersion": manifest["modelVersion"],
+        "tidkopru.mediaPipeModelSha256": manifest["mediaPipeModelSha256"],
+        "tidkopru.mediaPipeRuntimeSha256": manifest["mediaPipeRuntimeSha256"],
+        "tidkopru.mediaPipeWasmFiles": json.dumps(manifest["mediaPipeWasmFiles"], ensure_ascii=False, sort_keys=True, separators=(",", ":")),
         "tidkopru.mediaPipeModelVersion": manifest["mediaPipeModelVersion"],
         "tidkopru.mediaPipeRuntimeVersion": manifest["mediaPipeRuntimeVersion"],
+        "tidkopru.captureContractSha256": manifest["captureContractSha256"],
+        "tidkopru.measurementSha256": manifest["measurementSha256"],
         "tidkopru.onnxRuntimeVersion": manifest["onnxRuntimeVersion"],
         "tidkopru.preprocessVersion": manifest["preprocessVersion"],
         "tidkopru.preprocessingHash": manifest["preprocessingHash"],
@@ -91,6 +107,18 @@ def make_test_onnx(manifest, overrides=None):
         entry.key, entry.value = key, value
     return model.SerializeToString()
 
+
+def model_capture_contract(expected_preprocessing):
+    return capture_contract_sha256(
+        preprocess_version=expected_preprocessing["preprocessVersion"],
+        landmark_indices=expected_preprocessing["landmarkIndices"],
+        model_version="model-v1",
+        runtime_version="runtime-v1",
+        runtime_sha256="a" * 64,
+        model_sha256="b" * 64,
+        wasm_files=WASM_FILES,
+    )
+
 class SignModelPipelineTests(unittest.TestCase):
     def setUp(self):
         self.records = [record("S%02d" % signer, sign) for signer in range(1, 7) for sign in ("SIGN_A", "SIGN_B")]
@@ -104,6 +132,32 @@ class SignModelPipelineTests(unittest.TestCase):
         self.assertTrue(sets[0].isdisjoint(sets[2]))
         self.assertTrue(sets[1].isdisjoint(sets[2]))
         self.assertEqual(first["seed"], 41)
+
+    def test_signer_overlap_is_rejected_when_supplied_splits_are_rechecked(self):
+        overlapping = {
+            "train": {"signerCodes": ["S01"], "records": [record("S01", "SIGN_A")]},
+            "validation": {"signerCodes": ["S01"], "records": [record("S01", "SIGN_A")]},
+            "test": {"signerCodes": ["S03"], "records": [record("S03", "SIGN_A")]},
+        }
+        with self.assertRaisesRegex(ValueError, "signer leakage"):
+            assert_signer_disjoint(overlapping)
+
+    def test_reserved_classes_must_survive_each_signer_split(self):
+        splits = {
+            name: {"records": [record("S" + str(index), label) for index, label in enumerate(("UNKNOWN", "BLANK", "PARTIAL"))]}
+            for name in ("train", "validation", "test")
+        }
+        splits["test"]["records"] = [item for item in splits["test"]["records"] if item["signId"] != "PARTIAL"]
+        self.assertEqual(reserved_split_coverage_errors(splits), ["split_missing_reserved_examples:test:PARTIAL"])
+
+    def test_collection_protocol_requires_distinct_repetitions_and_condition_coverage(self):
+        repeated = [record("S01", "SIGN_A") for _ in range(10)]
+        errors = collection_protocol_errors(
+            repeated, ["S01"], ["SIGN_A"],
+            {"lightingCode": ["L1", "L2"], "distanceCode": ["D1"], "backgroundCode": ["B1"]},
+        )
+        self.assertIn("dataset_requires_10_distinct_repetitions_per_signer_and_sign", errors)
+        self.assertIn("condition_coverage_missing:SIGN_A:lightingCode", errors)
 
     def test_each_sign_is_present_in_each_split_when_signers_allow_it(self):
         splits = split_by_signer(self.records, seed=9)
@@ -151,25 +205,69 @@ class SignModelPipelineTests(unittest.TestCase):
 
     def test_metric_report_arithmetic_exposes_each_release_gate(self):
         report = evaluate_pilot_metrics(
-            true_labels=["SIGN_A", "SIGN_A", "UNKNOWN", "BLANK"],
+            true_labels=["SIGN_A", "SIGN_A", "UNKNOWN", "BLANK", "PARTIAL"],
             predictions=[
                 {"signId": "SIGN_A", "confidence": 0.9, "accepted": True, "reason": ""},
                 {"signId": "SIGN_A", "confidence": 0.4, "accepted": False, "reason": "low_confidence"},
                 {"signId": "SIGN_A", "confidence": 0.8, "accepted": True, "reason": ""},
                 {"signId": "BLANK", "confidence": 0.7, "accepted": False, "reason": "unknown_class"},
+                {"signId": "PARTIAL", "confidence": 0.8, "accepted": False, "reason": "unknown_class"},
             ],
-            idle_predictions=[{"signId": "SIGN_A", "accepted": True}],
-            idle_minutes=2,
+            idle_predictions=[{"windowId": "W001", "signId": "SIGN_A", "confidence": 0.9, "accepted": True}],
+            idle_minutes=10,
+            idle_windows_processed=600,
             latency_ms=[100, 120, 2000, 200],
             allowed_signs=["SIGN_A"],
             confidence_threshold=0.7,
         )
         self.assertEqual(report["falseAcceptanceRate"], 0.5)
+        self.assertEqual(report["partialFalseAcceptanceRate"], 0.0)
+        self.assertEqual(report["idleWindowsProcessed"], 600)
         self.assertEqual(report["confusionMatrix"]["BLANK"]["BLANK"], 1)
         self.assertEqual(report["lowConfidenceRejectionRate"], 1.0)
-        self.assertEqual(report["falseWordsPerMinute"], 0.5)
+        self.assertEqual(report["falseWordsPerMinute"], 0.1)
         self.assertEqual(report["p95ModelLatencyMs"], 2000)
         self.assertFalse(report["passesPilotGates"])
+
+    def test_partial_examples_cannot_dilute_blank_unknown_false_acceptance(self):
+        labels = ["SIGN_A"] * 10 + ["BLANK", "UNKNOWN"] + ["PARTIAL"] * 98
+        predictions = [
+            {"signId": "SIGN_A", "confidence": 0.95, "accepted": index != 0, "reason": "low_confidence" if index == 0 else ""}
+            for index in range(10)
+        ]
+        predictions.extend([
+            {"signId": "SIGN_A", "confidence": 0.99, "accepted": True, "reason": ""},
+            {"signId": "SIGN_A", "confidence": 0.99, "accepted": True, "reason": ""},
+        ])
+        predictions.extend(
+            {"signId": "PARTIAL", "confidence": 0.99, "accepted": False, "reason": "unknown_class"}
+            for _ in range(98)
+        )
+        report = evaluate_pilot_metrics(
+            labels, predictions, [], 10, [100, 120], ["SIGN_A"], 0.7, idle_windows_processed=600,
+        )
+        self.assertEqual(report["falseAcceptanceRate"], 1.0)
+        self.assertEqual(report["partialFalseAcceptanceRate"], 0.0)
+        self.assertEqual(report["falseWordsPerMinute"], 0.0)
+        self.assertFalse(report["gates"]["falseAcceptanceRate"])
+        self.assertFalse(report["passesPilotGates"])
+
+    def test_idle_measurement_requires_processed_window_coverage_and_valid_events(self):
+        labels = ["SIGN_A", "BLANK", "UNKNOWN", "PARTIAL"]
+        predictions = [
+            {"signId": "SIGN_A", "confidence": 0.9, "accepted": True},
+            {"signId": "BLANK", "confidence": 0.9, "accepted": False},
+            {"signId": "UNKNOWN", "confidence": 0.9, "accepted": False},
+            {"signId": "PARTIAL", "confidence": 0.9, "accepted": False},
+        ]
+        with self.assertRaises(ValueError):
+            evaluate_pilot_metrics(labels, predictions, [], 2, [100], ["SIGN_A"], 0.7, idle_windows_processed=0)
+        with self.assertRaises(ValueError):
+            evaluate_pilot_metrics(labels, predictions, [], 10, [100], ["SIGN_A"], 0.7, idle_windows_processed=1)
+        with self.assertRaises(ValueError):
+            evaluate_pilot_metrics(
+                labels, predictions, [{}], 10, [100], ["SIGN_A"], 0.7, idle_windows_processed=600,
+            )
 
     def test_export_refuses_missing_approvals_before_creating_output(self):
         from tempfile import TemporaryDirectory
@@ -191,7 +289,10 @@ class SignModelPipelineTests(unittest.TestCase):
     def test_model_manifest_verification_rejects_missing_or_mismatched_identity(self):
         from tools.sign_model.export_onnx import ModelManifestError, verify_model_manifest
 
-        expected_preprocessing = {"preprocessVersion": "v1", "featureNames": ["pose.11.x"]}
+        expected_preprocessing = {
+            "preprocessVersion": "v1", "featureNames": ["pose.11.x"],
+            "landmarkIndices": {"pose": [11], "leftHand": [], "rightHand": [], "face": []},
+        }
         manifest = {
             "modelVersion": "pilot-v1",
             "sha256": "0" * 64,
@@ -234,14 +335,21 @@ class SignModelPipelineTests(unittest.TestCase):
 
     def test_model_manifest_verification_accepts_exact_artifact_and_preprocessing(self):
         import hashlib
-        from tools.sign_model.export_onnx import verify_model_manifest
+        from tools.sign_model.export_onnx import ModelManifestError, verify_model_manifest
 
-        expected_preprocessing = {"preprocessVersion": "v1", "featureNames": ["pose.11.x"]}
+        expected_preprocessing = {
+            "preprocessVersion": "v1", "featureNames": ["pose.11.x"],
+            "landmarkIndices": {"pose": [11], "leftHand": [], "rightHand": [], "face": []},
+        }
         scaler = {"version": "train-visible-zscore-v1", "featureNames": ["pose.11.x"], "mean": [0.0], "scale": [1.0]}
         allowed_signs = ["SIGN_%02d" % value for value in range(20)]
         manifest = {
             "modelVersion": "pilot-v1", "modelFile": "sign-pilot.onnx",
             "mediaPipeModelVersion": "model-v1", "mediaPipeRuntimeVersion": "runtime-v1",
+            "mediaPipeModelSha256": "b" * 64, "mediaPipeRuntimeSha256": "a" * 64,
+            "mediaPipeWasmFiles": WASM_FILES,
+            "captureContractSha256": model_capture_contract(expected_preprocessing),
+            "measurementSha256": "1" * 64,
             "onnxRuntimeVersion": "1.22.0", "preprocessVersion": "v1",
             "preprocessingHash": preprocessing_hash(expected_preprocessing),
             "preprocessingManifest": expected_preprocessing, "landmarkNames": ["pose.11.x"],
@@ -249,11 +357,14 @@ class SignModelPipelineTests(unittest.TestCase):
             "classIds": allowed_signs + ["UNKNOWN", "BLANK", "PARTIAL"], "confidenceThreshold": 0.7,
             "inferenceLocation": "on-device",
             "androidDevice": {"platform": "Android", "model": "Test Device"},
-            "pilotMetrics": {"macroF1": 0.9, "falseAcceptanceRate": 0.02, "falseWordsPerMinute": 0.5, "lowConfidenceRejectionRate": 0.95, "p95ModelLatencyMs": 900},
+            "pilotMetrics": {"macroF1": 0.9, "falseAcceptanceRate": 0.02, "partialFalseAcceptanceRate": 0.02, "falseWordsPerMinute": 0.5, "lowConfidenceRejectionRate": 0.95, "p95ModelLatencyMs": 900},
         }
         model_bytes = make_test_onnx(manifest)
         manifest["sha256"] = hashlib.sha256(model_bytes).hexdigest()
         self.assertEqual(verify_model_manifest(manifest, model_bytes, expected_preprocessing, scaler), manifest)
+        wrong_asset_identity = {**manifest, "mediaPipeModelSha256": "c" * 64}
+        with self.assertRaises(ModelManifestError):
+            verify_model_manifest(wrong_asset_identity, model_bytes, expected_preprocessing, scaler)
     def test_evaluation_export_gate_checks_values_not_only_pass_flag(self):
         from tools.sign_model.export_onnx import evaluation_gate_errors
 
@@ -261,18 +372,41 @@ class SignModelPipelineTests(unittest.TestCase):
             "passesPilotGates": True,
             "macroF1": 0.95,
             "falseAcceptanceRate": 0.10,
+            "partialFalseAcceptanceRate": 0.0,
             "falseWordsPerMinute": 0.1,
             "lowConfidenceRejectionRate": 0.95,
             "p95ModelLatencyMs": 500,
             "gates": {
                 "macroF1": True,
                 "falseAcceptanceRate": True,
+                "partialFalseAcceptanceRate": True,
                 "falseWordsPerMinute": True,
                 "lowConfidenceRejectionRate": True,
                 "p95ModelLatencyMs": True,
             },
         }
         self.assertIn("false_acceptance_gate_failed", evaluation_gate_errors(report))
+
+    def test_export_gate_rejects_metrics_changed_after_evaluation(self):
+        from tools.sign_model.export_onnx import evaluation_gate_errors
+
+        report = {
+            "passesPilotGates": True,
+            "macroF1": 0.95, "falseAcceptanceRate": 0.01, "partialFalseAcceptanceRate": 0.01,
+            "falseWordsPerMinute": 0.0, "lowConfidenceRejectionRate": 1.0, "p95ModelLatencyMs": 500,
+            "gates": {
+                "macroF1": True, "falseAcceptanceRate": True, "partialFalseAcceptanceRate": True,
+                "falseWordsPerMinute": True, "lowConfidenceRejectionRate": True, "p95ModelLatencyMs": True,
+            },
+        }
+        recomputed = {**report, "macroF1": 0.2, "passesPilotGates": False}
+        errors = evaluation_gate_errors(report, expected_metrics=recomputed)
+        self.assertIn("evaluation_metric_recomputed_mismatch:macroF1", errors)
+        recomputed_with_confusion = {**recomputed, "confusionMatrix": {"SIGN_A": {"SIGN_A": 500}}}
+        self.assertIn(
+            "evaluation_report_recomputed_mismatch:confusionMatrix",
+            evaluation_gate_errors(report, expected_metrics=recomputed_with_confusion),
+        )
 
     def test_dataset_fingerprint_is_deterministic_and_tracks_content(self):
         from hashlib import sha256
@@ -334,12 +468,19 @@ class SignModelPipelineTests(unittest.TestCase):
         import hashlib
         from tools.sign_model.export_onnx import ModelManifestError, verify_model_manifest
 
-        expected_preprocessing = {"preprocessVersion": "v1", "featureNames": ["pose.11.x"]}
+        expected_preprocessing = {
+            "preprocessVersion": "v1", "featureNames": ["pose.11.x"],
+            "landmarkIndices": {"pose": [11], "leftHand": [], "rightHand": [], "face": []},
+        }
         scaler = {"version": "train-visible-zscore-v1", "featureNames": ["pose.11.x"], "mean": [0.0], "scale": [1.0]}
         allowed_signs = ["SIGN_%02d" % value for value in range(20)]
         manifest = {
             "modelVersion": "pilot-v1", "modelFile": "sign-pilot.onnx",
             "mediaPipeModelVersion": "model-v1", "mediaPipeRuntimeVersion": "runtime-v1",
+            "mediaPipeModelSha256": "b" * 64, "mediaPipeRuntimeSha256": "a" * 64,
+            "mediaPipeWasmFiles": WASM_FILES,
+            "captureContractSha256": model_capture_contract(expected_preprocessing),
+            "measurementSha256": "1" * 64,
             "onnxRuntimeVersion": "1.22.0", "preprocessVersion": "v1",
             "preprocessingHash": preprocessing_hash(expected_preprocessing),
             "preprocessingManifest": expected_preprocessing, "landmarkNames": ["pose.11.x"],
@@ -347,7 +488,7 @@ class SignModelPipelineTests(unittest.TestCase):
             "classIds": allowed_signs + ["UNKNOWN", "BLANK", "PARTIAL"], "confidenceThreshold": 0.7,
             "inferenceLocation": "on-device",
             "androidDevice": {"platform": "Android", "model": "Test Device"},
-            "pilotMetrics": {"macroF1": 0.9, "falseAcceptanceRate": 0.02, "falseWordsPerMinute": 0.5, "lowConfidenceRejectionRate": 0.95, "p95ModelLatencyMs": 900},
+            "pilotMetrics": {"macroF1": 0.9, "falseAcceptanceRate": 0.02, "partialFalseAcceptanceRate": 0.02, "falseWordsPerMinute": 0.5, "lowConfidenceRejectionRate": 0.95, "p95ModelLatencyMs": 900},
         }
         model_bytes = make_test_onnx(manifest)
         manifest["sha256"] = hashlib.sha256(model_bytes).hexdigest()
@@ -363,6 +504,31 @@ class SignModelPipelineTests(unittest.TestCase):
         )
         self.assertIn("pilot_requires_exactly_20_approved_signs", errors)
         self.assertIn("pilot_requires_at_least_20_approved_signers", errors)
+
+    def test_training_gate_rejects_records_from_a_different_extraction_contract(self):
+        from tools.sign_model.train import training_gate_errors
+
+        signs = ["SIGN_%02d" % index for index in range(20)]
+        manifest = {
+            "allowedSigns": signs,
+            "signers": ["S%02d" % index for index in range(20)],
+            "consentCodes": ["C01"],
+            "conditions": {"lighting": ["L1"], "distance": ["D1"], "background": ["B1"]},
+            "metricsDisclosureNoticeId": "MP-NOTICE-1",
+            "preprocessVersion": "v1",
+            "landmarkIndices": LANDMARK_INDICES,
+            "mediaPipeModelVersion": "model-v1",
+            "mediaPipeRuntimeVersion": "runtime-v1",
+            "mediaPipeModelSha256": "b" * 64,
+            "mediaPipeRuntimeSha256": "a" * 64,
+            "mediaPipeWasmFiles": WASM_FILES,
+        }
+        manifest["captureContractSha256"] = model_capture_contract({
+            "preprocessVersion": "v1",
+            "landmarkIndices": LANDMARK_INDICES,
+        })
+        errors = training_gate_errors(manifest, [record("S01", signs[0])])
+        self.assertIn("dataset:capture_contract_mismatch", errors)
 
     def test_preprocessing_rejects_boolean_frame_count(self):
         from tools.sign_model.preprocess import PreprocessError
@@ -382,23 +548,30 @@ class SignModelPipelineTests(unittest.TestCase):
         import numpy as np
         from tools.sign_model.train import calibrate_confidence_threshold
 
-        logits = [[3.8, 0.0]] * 10 + [[1.1, 0.0], [0.0, 3.0]]
-        labels = ["SIGN_A"] * 10 + ["UNKNOWN", "UNKNOWN"]
-        threshold = calibrate_confidence_threshold(logits, labels, ["SIGN_A", "UNKNOWN"], ["SIGN_A"])
-        self.assertGreater(threshold, 0.75)
-        self.assertLess(threshold, 0.90)
+        logits = [[3.8, 0.0, 0.0, 0.0]] * 10 + [[1.1, 0.0, 0.0, 0.0], [0.0, 3.0, 0.0, 0.0], [0.0, 0.0, 3.0, 0.0]]
+        labels = ["SIGN_A"] * 10 + ["BLANK", "UNKNOWN", "PARTIAL"]
+        threshold = calibrate_confidence_threshold(logits, labels, ["SIGN_A", "UNKNOWN", "BLANK", "PARTIAL"], ["SIGN_A"])
+        self.assertGreater(threshold, 0.5)
+        self.assertLess(threshold, 0.95)
         self.assertTrue(np.isfinite(threshold))
 
     def test_manifest_must_match_preprocessing_embedded_in_onnx(self):
         import hashlib
         from tools.sign_model.export_onnx import ModelManifestError, verify_model_manifest
 
-        expected_preprocessing = {"preprocessVersion": "v1", "featureNames": ["pose.11.x"]}
+        expected_preprocessing = {
+            "preprocessVersion": "v1", "featureNames": ["pose.11.x"],
+            "landmarkIndices": {"pose": [11], "leftHand": [], "rightHand": [], "face": []},
+        }
         scaler = {"version": "train-visible-zscore-v1", "featureNames": ["pose.11.x"], "mean": [0.0], "scale": [1.0]}
         allowed_signs = ["SIGN_%02d" % value for value in range(20)]
         manifest = {
             "modelVersion": "pilot-v1", "modelFile": "sign-pilot.onnx",
             "mediaPipeModelVersion": "model-v1", "mediaPipeRuntimeVersion": "runtime-v1",
+            "mediaPipeModelSha256": "b" * 64, "mediaPipeRuntimeSha256": "a" * 64,
+            "mediaPipeWasmFiles": WASM_FILES,
+            "captureContractSha256": model_capture_contract(expected_preprocessing),
+            "measurementSha256": "1" * 64,
             "onnxRuntimeVersion": "1.22.0", "preprocessVersion": "v1",
             "preprocessingHash": preprocessing_hash(expected_preprocessing),
             "preprocessingManifest": expected_preprocessing, "landmarkNames": ["pose.11.x"],
@@ -406,7 +579,7 @@ class SignModelPipelineTests(unittest.TestCase):
             "classIds": allowed_signs + ["UNKNOWN", "BLANK", "PARTIAL"], "confidenceThreshold": 0.7,
             "inferenceLocation": "on-device",
             "androidDevice": {"platform": "Android", "model": "Test Device"},
-            "pilotMetrics": {"macroF1": 0.9, "falseAcceptanceRate": 0.02, "falseWordsPerMinute": 0.5, "lowConfidenceRejectionRate": 0.95, "p95ModelLatencyMs": 900},
+            "pilotMetrics": {"macroF1": 0.9, "falseAcceptanceRate": 0.02, "partialFalseAcceptanceRate": 0.02, "falseWordsPerMinute": 0.5, "lowConfidenceRejectionRate": 0.95, "p95ModelLatencyMs": 900},
         }
         mismatched_bytes = make_test_onnx(manifest, {
             "tidkopru.preprocessingManifest": "{\"featureNames\":[\"pose.11.x\"],\"preprocessVersion\":\"v2\"}"
@@ -423,7 +596,7 @@ class SignModelPipelineTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             evaluate_pilot_metrics(
                 ["NOT_APPROVED"], [{"signId": "NOT_APPROVED", "confidence": 0.9, "accepted": False, "reason": "unknown_class"}],
-                [], 1, [1], ["SIGN_A"], 0.7,
+                [], 1, [1], ["SIGN_A"], 0.7, idle_windows_processed=1,
             )
 
 if __name__ == "__main__":

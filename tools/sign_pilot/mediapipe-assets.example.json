@@ -1,8 +1,10 @@
 {
+  "modelVersion": "",
   "runtimeVersion": "",
   "runtimeUrl": "",
   "runtimeSha256": "",
   "wasmRoot": "",
+  "wasmFiles": [],
   "modelUrl": "",
   "modelSha256": ""
 }

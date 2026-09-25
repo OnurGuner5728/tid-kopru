@@ -1,0 +1,107 @@
+{
+  "manifest": {
+    "signers": ["S01"],
+    "allowedSigns": ["SIGN_A"],
+    "conditions": {
+      "lighting": ["L1"],
+      "distance": ["D1"],
+      "background": ["B1"]
+    },
+    "captureContractSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  "validRecord": {
+    "schemaVersion": "1.1",
+    "captureId": "11111111111111111111111111111111",
+    "captureContractSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "signerCode": "S01",
+    "consentCode": "C01",
+    "signId": "SIGN_A",
+    "repetition": 1,
+    "conditions": {
+      "lightingCode": "L1",
+      "distanceCode": "D1",
+      "backgroundCode": "B1"
+    },
+    "fps": 30,
+    "frames": [
+      {
+        "timestampMs": 0,
+        "pose": [0.1, 0.2, 0.3],
+        "poseVisibility": [1],
+        "leftHand": [0, 0, 0],
+        "leftHandVisibility": [0],
+        "rightHand": [0.4, 0.5, 0.6],
+        "rightHandVisibility": [1],
+        "face": [],
+        "faceVisibility": []
+      }
+    ],
+    "preprocessVersion": "v1"
+  },
+  "rejectedRecords": [
+    {
+      "error": "unknown_sign",
+      "record": {
+        "schemaVersion": "1.1",
+        "captureId": "22222222222222222222222222222222",
+        "captureContractSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "signerCode": "S01",
+        "consentCode": "C01",
+        "signId": "SIGN_NOT_APPROVED",
+        "repetition": 2,
+        "conditions": {
+          "lightingCode": "L1",
+          "distanceCode": "D1",
+          "backgroundCode": "B1"
+        },
+        "fps": 30,
+        "frames": [
+          {
+            "timestampMs": 0,
+            "pose": [0.1, 0.2, 0.3],
+            "poseVisibility": [1],
+            "leftHand": [0, 0, 0],
+            "leftHandVisibility": [0],
+            "rightHand": [0.4, 0.5, 0.6],
+            "rightHandVisibility": [1],
+            "face": [],
+            "faceVisibility": []
+          }
+        ],
+        "preprocessVersion": "v1"
+      }
+    },
+    {
+      "error": "invalid_conditions",
+      "record": {
+        "schemaVersion": "1.1",
+        "captureId": "33333333333333333333333333333333",
+        "captureContractSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "signerCode": "S01",
+        "consentCode": "C01",
+        "signId": "SIGN_A",
+        "repetition": 3,
+        "conditions": {
+          "lightingCode": "L9",
+          "distanceCode": "D1",
+          "backgroundCode": "B1"
+        },
+        "fps": 30,
+        "frames": [
+          {
+            "timestampMs": 0,
+            "pose": [0.1, 0.2, 0.3],
+            "poseVisibility": [1],
+            "leftHand": [0, 0, 0],
+            "leftHandVisibility": [0],
+            "rightHand": [0.4, 0.5, 0.6],
+            "rightHandVisibility": [1],
+            "face": [],
+            "faceVisibility": []
+          }
+        ],
+        "preprocessVersion": "v1"
+      }
+    }
+  ]
+}

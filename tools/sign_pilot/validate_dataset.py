@@ -4,13 +4,19 @@ from __future__ import annotations
 
 import math
 import re
+import hashlib
+import json
 from collections.abc import Iterable, Mapping
 
 
-SCHEMA_VERSION = "1.0"
+SCHEMA_VERSION = "1.1"
 _CODE = re.compile(r"^[A-Za-z0-9_-]{1,32}$")
+_CAPTURE_ID = re.compile(r"^[a-fA-F0-9]{32}$")
+_SHA256 = re.compile(r"^[a-fA-F0-9]{64}$")
 _REQUIRED_RECORD_FIELDS = {
     "schemaVersion",
+    "captureId",
+    "captureContractSha256",
     "signerCode",
     "consentCode",
     "signId",
@@ -51,6 +57,18 @@ _PERSONAL_KEY_TERMS = {
 def _add(errors: list[str], code: str) -> None:
     if code not in errors:
         errors.append(code)
+
+
+def _canonical_clip_value(value):
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return math.floor(abs(value) * 1_000_000 + 0.5) * (-1 if value < 0 else 1)
+    if isinstance(value, list):
+        return [_canonical_clip_value(item) for item in value]
+    if isinstance(value, Mapping):
+        return {key: _canonical_clip_value(value[key]) for key in sorted(value)}
+    return value
 
 
 def _codes(values: Iterable[str] | str | None) -> set[str]:
@@ -99,6 +117,13 @@ def _validate_record(record: object, signers: set[str], allowed_signs: set[str],
 
     if "schemaVersion" in record and record["schemaVersion"] != SCHEMA_VERSION:
         _add(errors, "unsupported_schema")
+
+    capture_id = record.get("captureId")
+    if not isinstance(capture_id, str) or not _CAPTURE_ID.fullmatch(capture_id):
+        _add(errors, "invalid_capture_id")
+    capture_contract = record.get("captureContractSha256")
+    if not isinstance(capture_contract, str) or not _SHA256.fullmatch(capture_contract):
+        _add(errors, "invalid_capture_contract")
 
     signer_code = record.get("signerCode")
     if "signerCode" in record:
@@ -185,7 +210,13 @@ def _validate_record(record: object, signers: set[str], allowed_signs: set[str],
                         _add(errors, "invalid_visibility")
 
 
-def validate_dataset(records: object, signers: Iterable[str], allowed_signs: Iterable[str], allowed_conditions: Mapping[str, Iterable[str]] | None = None) -> list[str]:
+def validate_dataset(
+    records: object,
+    signers: Iterable[str],
+    allowed_signs: Iterable[str],
+    allowed_conditions: Mapping[str, Iterable[str]] | None = None,
+    expected_capture_contract_sha256: str | None = None,
+) -> list[str]:
     """Return stable validation error codes for a list of consent-coded records.
 
     Signers and allowed signs are supplied by a separately approved manifest.
@@ -205,6 +236,45 @@ def validate_dataset(records: object, signers: Iterable[str], allowed_signs: Ite
             condition_codes = {}
         else:
             condition_codes = {field: _codes(allowed_conditions[field]) for field in _CONDITION_FIELDS}
+    seen_capture_ids = set()
+    seen_capture_contents = set()
+    seen_repetitions = set()
     for record in records:
         _validate_record(record, signer_codes, sign_ids, condition_codes, errors)
+        if not isinstance(record, dict):
+            continue
+        capture_id = record.get("captureId")
+        if isinstance(capture_id, str) and _CAPTURE_ID.fullmatch(capture_id):
+            normalized_capture_id = capture_id.lower()
+            if normalized_capture_id in seen_capture_ids:
+                _add(errors, "duplicate_capture_id")
+            seen_capture_ids.add(normalized_capture_id)
+        if expected_capture_contract_sha256 and record.get("captureContractSha256") != expected_capture_contract_sha256:
+            _add(errors, "capture_contract_mismatch")
+        repetition_key = (record.get("signerCode"), record.get("signId"), record.get("repetition"))
+        if all(isinstance(value, str) for value in repetition_key[:2]) and isinstance(repetition_key[2], int) and not isinstance(repetition_key[2], bool):
+            if repetition_key in seen_repetitions:
+                _add(errors, "duplicate_repetition")
+            seen_repetitions.add(repetition_key)
+        frames = record.get("frames")
+        if isinstance(frames, list):
+            frames = [
+                {key: value for key, value in frame.items() if key != "timestampMs"}
+                if isinstance(frame, Mapping) else frame
+                for frame in frames
+            ]
+        try:
+            clip_payload = _canonical_clip_value({
+                "captureContractSha256": record.get("captureContractSha256", "").lower()
+                    if isinstance(record.get("captureContractSha256"), str) else record.get("captureContractSha256"),
+                "frames": frames,
+            })
+            clip_identity = hashlib.sha256(json.dumps(
+                clip_payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"), allow_nan=False,
+            ).encode("utf-8")).hexdigest()
+        except (TypeError, ValueError, OverflowError):
+            continue
+        if clip_identity in seen_capture_contents:
+            _add(errors, "duplicate_capture_content")
+        seen_capture_contents.add(clip_identity)
     return errors

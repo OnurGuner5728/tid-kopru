@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import {
   exportLandmarkRecords,
   normalizeLandmarkFrame,
@@ -9,7 +10,9 @@ const point = (x, y, z, visibility = 1) => ({ x, y, z, visibility });
 
 function validRecord() {
   return {
-    schemaVersion: "1.0",
+    schemaVersion: "1.1",
+    captureId: "1".repeat(32),
+    captureContractSha256: "a".repeat(64),
     signerCode: "S01",
     consentCode: "C01",
     signId: "SIGN_A",
@@ -111,6 +114,7 @@ test("does not request a camera before the approved MediaPipe metrics notice is 
     conditions: { lighting: ["L1"], distance: ["D1"], background: ["B1"] },
     preprocessVersion: "v1",
     metricsDisclosureNoticeId: "MP-METRICS-2026-04",
+    captureContractSha256: "a".repeat(64),
     landmarkIndices: { pose: [11], leftHand: [0], rightHand: [0], face: [] },
   };
   await assert.rejects(
@@ -158,6 +162,7 @@ test("stopCapture releases every fake camera track and closes its landmarker", a
         conditions: { lighting: ["L1"], distance: ["D1"], background: ["B1"] },
         preprocessVersion: "v1",
         metricsDisclosureNoticeId: "MP-METRICS-2026-04",
+        captureContractSha256: "a".repeat(64),
         landmarkIndices: { pose: [11], leftHand: [0], rightHand: [0], face: [] },
       },
       consentCode: "C01",
@@ -180,6 +185,138 @@ test("stopCapture releases every fake camera track and closes its landmarker", a
   assert.deepEqual(tracks.map((track) => track.stopped), [true, true]);
   assert.equal(landmarkerClosed, true);
   assert.equal(videoElement.srcObject, null);
+});
+
+test("stopCapture cancels a pending camera prompt and releases a stream granted afterward", async () => {
+  const { startCapture, stopCapture } = await import("../tools/sign_pilot/capture.mjs");
+  const manifest = {
+    schemaVersion: "1.0", approved: true, signers: ["S01"], allowedSigns: ["SIGN_A"], consentCodes: ["C01"],
+    conditions: { lighting: ["L1"], distance: ["D1"], background: ["B1"] }, preprocessVersion: "v1",
+    metricsDisclosureNoticeId: "MP-METRICS-2026-04",
+    captureContractSha256: "a".repeat(64),
+    landmarkIndices: { pose: [11], leftHand: [0], rightHand: [0], face: [] },
+  };
+  let resolvePermission;
+  let permissionRequested;
+  const permissionStarted = new Promise((resolve) => { permissionRequested = resolve; });
+  const permissionResult = new Promise((resolve) => { resolvePermission = resolve; });
+  let trackStopped = false;
+  let landmarkerClosed = false;
+  let rafCallback;
+  const videoElement = {
+    readyState: 0, currentTime: 0, srcObject: null,
+    play: async () => {}, pause() {},
+  };
+  const priorRequestAnimationFrame = globalThis.requestAnimationFrame;
+  const priorCancelAnimationFrame = globalThis.cancelAnimationFrame;
+  globalThis.requestAnimationFrame = (callback) => { rafCallback = callback; return 91; };
+  globalThis.cancelAnimationFrame = () => {};
+  const pendingStart = startCapture({
+    videoElement,
+    manifest,
+    consentCode: "C01",
+    metricsDisclosureAccepted: true,
+    createLandmarker: async () => ({ detectForVideo() {}, close() { landmarkerClosed = true; } }),
+    mediaDevices: {
+      getUserMedia: () => {
+        permissionRequested();
+        return permissionResult;
+      },
+    },
+  }).then(() => null, (error) => error);
+
+  try {
+    await permissionStarted;
+    const concurrentStartError = await startCapture({
+      videoElement,
+      manifest,
+      consentCode: "C01",
+      metricsDisclosureAccepted: true,
+      createLandmarker: async () => ({ close() {} }),
+      mediaDevices: { getUserMedia: async () => ({ getTracks: () => [] }) },
+    }).then(() => null, (error) => error);
+    assert.equal(concurrentStartError?.code, "capture_already_active");
+
+    await stopCapture();
+    resolvePermission({ getTracks: () => [{ stop() { trackStopped = true; } }] });
+    const startError = await pendingStart;
+    assert.equal(startError?.code, "capture_cancelled");
+    assert.equal(trackStopped, true);
+    assert.equal(landmarkerClosed, true);
+    assert.equal(videoElement.srcObject, null);
+    assert.equal(typeof rafCallback, "undefined");
+  } finally {
+    resolvePermission({ getTracks: () => [{ stop() { trackStopped = true; } }] });
+    await pendingStart;
+    await stopCapture();
+    if (priorRequestAnimationFrame === undefined) delete globalThis.requestAnimationFrame;
+    else globalThis.requestAnimationFrame = priorRequestAnimationFrame;
+    if (priorCancelAnimationFrame === undefined) delete globalThis.cancelAnimationFrame;
+    else globalThis.cancelAnimationFrame = priorCancelAnimationFrame;
+  }
+});
+
+test("an unexpectedly ended camera stream is cleaned up and reported", async () => {
+  const { startCapture, stopCapture } = await import("../tools/sign_pilot/capture.mjs");
+  const manifest = {
+    schemaVersion: "1.0", approved: true, signers: ["S01"], allowedSigns: ["SIGN_A"], consentCodes: ["C01"],
+    conditions: { lighting: ["L1"], distance: ["D1"], background: ["B1"] }, preprocessVersion: "v1",
+    metricsDisclosureNoticeId: "MP-METRICS-2026-04",
+    captureContractSha256: "a".repeat(64),
+    landmarkIndices: { pose: [11], leftHand: [0], rightHand: [0], face: [] },
+  };
+  let endedHandler;
+  let trackStopped = false;
+  let landmarkerClosed = false;
+  let reportError;
+  const errorReported = new Promise((resolve) => { reportError = resolve; });
+  const videoElement = { readyState: 0, currentTime: 0, srcObject: null, play: async () => {}, pause() {} };
+  const priorRequestAnimationFrame = globalThis.requestAnimationFrame;
+  const priorCancelAnimationFrame = globalThis.cancelAnimationFrame;
+  globalThis.requestAnimationFrame = () => 92;
+  globalThis.cancelAnimationFrame = () => {};
+  try {
+    await startCapture({
+      videoElement,
+      manifest,
+      consentCode: "C01",
+      metricsDisclosureAccepted: true,
+      onError: reportError,
+      createLandmarker: async () => ({ close() { landmarkerClosed = true; } }),
+      mediaDevices: {
+        getUserMedia: async () => ({
+          addEventListener() {},
+          getTracks: () => [{
+            addEventListener(type, callback) { if (type === "ended") endedHandler = callback; },
+            stop() { trackStopped = true; },
+          }],
+        }),
+      },
+    });
+    assert.equal(typeof endedHandler, "function");
+    endedHandler();
+    const error = await errorReported;
+    assert.equal(error.code, "camera_stream_ended");
+    assert.equal(trackStopped, true);
+    assert.equal(landmarkerClosed, true);
+    assert.equal(videoElement.srcObject, null);
+
+    await startCapture({
+      videoElement,
+      manifest,
+      consentCode: "C01",
+      metricsDisclosureAccepted: true,
+      createLandmarker: async () => ({ close() {} }),
+      mediaDevices: { getUserMedia: async () => ({ getTracks: () => [{ stop() {} }] }) },
+    });
+    await stopCapture();
+  } finally {
+    await stopCapture();
+    if (priorRequestAnimationFrame === undefined) delete globalThis.requestAnimationFrame;
+    else globalThis.requestAnimationFrame = priorRequestAnimationFrame;
+    if (priorCancelAnimationFrame === undefined) delete globalThis.cancelAnimationFrame;
+    else globalThis.cancelAnimationFrame = priorCancelAnimationFrame;
+  }
 });
 
 test("refuses condition codes that are not in the approved manifest", () => {
@@ -207,6 +344,7 @@ test("does not run landmark inference while the signer has not started a clip", 
       schemaVersion: "1.0", approved: true, signers: ["S01"], allowedSigns: ["SIGN_A"], consentCodes: ["C01"],
       conditions: { lighting: ["L1"], distance: ["D1"], background: ["B1"] }, preprocessVersion: "v1",
       metricsDisclosureNoticeId: "MP-METRICS-2026-04",
+      captureContractSha256: "a".repeat(64),
       landmarkIndices: { pose: [11], leftHand: [0], rightHand: [0], face: [] },
     };
     await startCapture({
@@ -255,4 +393,135 @@ test("blocks runtime paths that point to another origin before fetching assets",
     globalThis.fetch = previousFetch;
   }
   assert.equal(fetchCalls, 0);
+});
+
+test("creates the local holistic landmarker in video mode with the hash-verified model buffer", async () => {
+  const { createLocalMediaPipeLandmarker } = await import("../tools/sign_pilot/mediapipe-loader.mjs");
+  const previousLocation = Object.getOwnPropertyDescriptor(globalThis, "location");
+  const previousFetch = globalThis.fetch;
+  const bytesByPath = new Map([
+    ["http://localhost/tools/sign_pilot/assets/runtime.mjs", new Uint8Array([1, 2, 3])],
+    ["http://localhost/tools/sign_pilot/assets/holistic.task", new Uint8Array([4, 5, 6])],
+    ["http://localhost/tools/sign_pilot/assets/wasm/vision_wasm_internal.js", new Uint8Array([7, 8])],
+    ["http://localhost/tools/sign_pilot/assets/wasm/vision_wasm_internal.wasm", new Uint8Array([9, 10])],
+  ]);
+  const hash = (bytes) => createHash("sha256").update(bytes).digest("hex");
+  const calls = [];
+  let closeCalls = 0;
+  const expectedInstance = { detectForVideo() {}, close() { closeCalls += 1; } };
+  Object.defineProperty(globalThis, "location", {
+    configurable: true,
+    value: { href: "http://localhost/tools/sign_pilot/capture.html" },
+  });
+  globalThis.fetch = async (url) => ({
+    ok: true,
+    arrayBuffer: async () => bytesByPath.get(String(url)).buffer,
+  });
+  try {
+    const instance = await createLocalMediaPipeLandmarker({
+      assetManifest: {
+        runtimeVersion: "1.0.0",
+        runtimeUrl: "./assets/runtime.mjs",
+        runtimeSha256: hash(bytesByPath.get("http://localhost/tools/sign_pilot/assets/runtime.mjs")),
+        wasmRoot: "./assets/wasm/",
+        wasmFiles: [
+          { path: "vision_wasm_internal.js", sha256: hash(bytesByPath.get("http://localhost/tools/sign_pilot/assets/wasm/vision_wasm_internal.js")) },
+          { path: "vision_wasm_internal.wasm", sha256: hash(bytesByPath.get("http://localhost/tools/sign_pilot/assets/wasm/vision_wasm_internal.wasm")) },
+        ],
+        modelUrl: "./assets/holistic.task",
+        modelSha256: hash(bytesByPath.get("http://localhost/tools/sign_pilot/assets/holistic.task")),
+      },
+      importRuntime: async (bytes) => {
+        assert.deepEqual(new Uint8Array(bytes), bytesByPath.get("http://localhost/tools/sign_pilot/assets/runtime.mjs"));
+        return {
+        FilesetResolver: { forVisionTasks: async (root) => ({
+          root,
+          wasmLoaderPath: new URL("vision_wasm_internal.js", root).href,
+          wasmBinaryPath: new URL("vision_wasm_internal.wasm", root).href,
+        }) },
+        HolisticLandmarker: {
+          createFromOptions: async (...args) => {
+            calls.push(["createFromOptions", ...args]);
+            return expectedInstance;
+          },
+          createFromModelBuffer: async (...args) => {
+            calls.push(["createFromModelBuffer", ...args]);
+            return expectedInstance;
+          },
+        },
+      };
+      },
+    });
+    assert.equal(typeof instance.detectForVideo, "function");
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0][0], "createFromOptions");
+    assert.equal(calls[0][1].root, "http://localhost/tools/sign_pilot/assets/wasm/");
+    assert.match(calls[0][1].wasmLoaderPath, /^blob:/u);
+    assert.match(calls[0][1].wasmBinaryPath, /^blob:/u);
+    assert.deepEqual(calls[0][2].baseOptions.modelAssetBuffer, bytesByPath.get("http://localhost/tools/sign_pilot/assets/holistic.task"));
+    assert.equal(calls[0][2].runningMode, "VIDEO");
+    assert.equal(calls[0][2].outputFaceBlendshapes, false);
+    assert.equal(calls[0][2].outputPoseSegmentationMasks, false);
+    await instance.close();
+    await instance.close();
+    assert.equal(closeCalls, 1);
+  } finally {
+    if (previousLocation) Object.defineProperty(globalThis, "location", previousLocation);
+    else delete globalThis.location;
+    globalThis.fetch = previousFetch;
+  }
+});
+
+test("blocks MediaPipe initialization when the resolved WASM binary hash is wrong", async () => {
+  const { createLocalMediaPipeLandmarker } = await import("../tools/sign_pilot/mediapipe-loader.mjs");
+  const previousLocation = Object.getOwnPropertyDescriptor(globalThis, "location");
+  const previousFetch = globalThis.fetch;
+  const wasmBytes = new Uint8Array([9, 10]);
+  const bytesByPath = new Map([
+    ["http://localhost/tools/sign_pilot/runtime.mjs", new Uint8Array([1])],
+    ["http://localhost/tools/sign_pilot/holistic.task", new Uint8Array([2])],
+    ["http://localhost/tools/sign_pilot/wasm/vision_wasm_internal.js", new Uint8Array([3])],
+    ["http://localhost/tools/sign_pilot/wasm/vision_wasm_internal.wasm", wasmBytes],
+  ]);
+  const hash = (bytes) => createHash("sha256").update(bytes).digest("hex");
+  let initialized = false;
+  Object.defineProperty(globalThis, "location", {
+    configurable: true,
+    value: { href: "http://localhost/tools/sign_pilot/capture.html" },
+  });
+  globalThis.fetch = async (url) => ({
+    ok: true,
+    arrayBuffer: async () => bytesByPath.get(String(url)).buffer,
+  });
+  try {
+    await assert.rejects(
+      () => createLocalMediaPipeLandmarker({
+        assetManifest: {
+          runtimeVersion: "1.0.0",
+          runtimeUrl: "./runtime.mjs",
+          runtimeSha256: hash(bytesByPath.get("http://localhost/tools/sign_pilot/runtime.mjs")),
+          wasmRoot: "./wasm/",
+          wasmFiles: [
+            { path: "vision_wasm_internal.js", sha256: hash(bytesByPath.get("http://localhost/tools/sign_pilot/wasm/vision_wasm_internal.js")) },
+            { path: "vision_wasm_internal.wasm", sha256: "0".repeat(64) },
+          ],
+          modelUrl: "./holistic.task",
+          modelSha256: hash(bytesByPath.get("http://localhost/tools/sign_pilot/holistic.task")),
+        },
+        importRuntime: async () => ({
+          FilesetResolver: { forVisionTasks: async (root) => ({
+            wasmLoaderPath: new URL("vision_wasm_internal.js", root).href,
+            wasmBinaryPath: new URL("vision_wasm_internal.wasm", root).href,
+          }) },
+          HolisticLandmarker: { createFromOptions: async () => { initialized = true; return {}; } },
+        }),
+      }),
+      (error) => error.code === "asset_hash_mismatch",
+    );
+    assert.equal(initialized, false);
+  } finally {
+    if (previousLocation) Object.defineProperty(globalThis, "location", previousLocation);
+    else delete globalThis.location;
+    globalThis.fetch = previousFetch;
+  }
 });

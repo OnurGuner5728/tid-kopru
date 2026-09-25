@@ -1,11 +1,15 @@
 import { createLocalMediaPipeLandmarker } from "./mediapipe-loader.mjs";
+import { CAPTURE_SCHEMA_VERSION } from "./capture-contract.mjs";
 
-export const SCHEMA_VERSION = "1.0";
-const RECORD_FIELDS = new Set(["schemaVersion", "signerCode", "consentCode", "signId", "repetition", "conditions", "fps", "frames", "preprocessVersion"]);
+export const SCHEMA_VERSION = CAPTURE_SCHEMA_VERSION;
+const PILOT_MANIFEST_SCHEMA_VERSION = "1.0";
+const RECORD_FIELDS = new Set(["schemaVersion", "captureId", "captureContractSha256", "signerCode", "consentCode", "signId", "repetition", "conditions", "fps", "frames", "preprocessVersion"]);
 const CONDITION_FIELDS = new Set(["lightingCode", "distanceCode", "backgroundCode"]);
 const GROUPS = [["pose", "poseVisibility"], ["leftHand", "leftHandVisibility"], ["rightHand", "rightHandVisibility"], ["face", "faceVisibility"]];
 const FRAME_FIELDS = new Set(["timestampMs", ...GROUPS.flatMap(([coordinates, visibility]) => [coordinates, visibility])]);
 const CODE = /^[A-Za-z0-9_-]{1,32}$/;
+const CAPTURE_ID = /^[a-f0-9]{32}$/i;
+const SHA256 = /^[a-f0-9]{64}$/i;
 const PERSONAL_KEY_TERMS = ["name", "email", "phone", "telephone", "mobile", "contact", "address", "video", "recording", "filepath", "rawvideo", "blob"];
 let activeCapture = null;
 
@@ -18,6 +22,27 @@ function captureError(code, message, codes = [code]) {
 
 function finiteNumber(value) {
   return typeof value === "number" && Number.isFinite(value);
+}
+
+function canonicalClipValue(value) {
+  if (typeof value === "number") return Math.sign(value) * Math.floor(Math.abs(value) * 1_000_000 + 0.5);
+  if (Array.isArray(value)) return value.map(canonicalClipValue);
+  if (value && typeof value === "object") {
+    return Object.fromEntries(Object.keys(value).sort().map((key) => [key, canonicalClipValue(value[key])]));
+  }
+  return value;
+}
+
+function captureContentIdentity(record) {
+  const frames = Array.isArray(record.frames) ? record.frames.map((frame) => {
+    if (!frame || typeof frame !== "object" || Array.isArray(frame)) return frame;
+    const { timestampMs, ...landmarkValues } = frame;
+    return landmarkValues;
+  }) : record.frames;
+  return JSON.stringify(canonicalClipValue({
+    captureContractSha256: typeof record.captureContractSha256 === "string" ? record.captureContractSha256.toLowerCase() : record.captureContractSha256,
+    frames,
+  }));
 }
 
 function normalizeGroup(points, coordinateField, visibilityField) {
@@ -105,6 +130,9 @@ export function validateLandmarkRecords(records, manifest = {}) {
   const signers = new Set(Array.isArray(manifest.signers) ? manifest.signers : []);
   const allowedSigns = new Set(Array.isArray(manifest.allowedSigns) ? manifest.allowedSigns : []);
   const errors = [];
+  const seenCaptureIds = new Set();
+  const seenRepetitions = new Set();
+  const seenClipContents = new Set();
   for (const record of records) {
     if (!record || typeof record !== "object" || Array.isArray(record)) {
       addError(errors, "invalid_record");
@@ -116,12 +144,28 @@ export function validateLandmarkRecords(records, manifest = {}) {
       if (!Object.hasOwn(record, field)) addError(errors, field === "consentCode" ? "missing_consent" : "missing_required_field");
     }
     if (Object.hasOwn(record, "schemaVersion") && record.schemaVersion !== SCHEMA_VERSION) addError(errors, "unsupported_schema");
+    const normalizedCaptureId = typeof record.captureId === "string" ? record.captureId.toLowerCase() : "";
+    if (!CAPTURE_ID.test(normalizedCaptureId)) addError(errors, "invalid_capture_id");
+    else if (seenCaptureIds.has(normalizedCaptureId)) addError(errors, "duplicate_capture_id");
+    else seenCaptureIds.add(normalizedCaptureId);
+    if (!SHA256.test(record.captureContractSha256 ?? "")) addError(errors, "invalid_capture_contract");
+    else if (manifest.captureContractSha256 && record.captureContractSha256 !== manifest.captureContractSha256) addError(errors, "capture_contract_mismatch");
     if (typeof record.signerCode !== "string" || !CODE.test(record.signerCode)) addError(errors, "invalid_signer_code");
     else if (!signers.has(record.signerCode)) addError(errors, "unknown_signer");
     if (typeof record.consentCode !== "string" || !CODE.test(record.consentCode)) addError(errors, "missing_consent");
     if (typeof record.signId !== "string" || !CODE.test(record.signId) || !allowedSigns.has(record.signId)) addError(errors, "unknown_sign");
     if (!Number.isInteger(record.repetition) || record.repetition < 1) addError(errors, "invalid_repetition");
+    else {
+      const repetitionKey = record.signerCode + "\u0000" + record.signId + "\u0000" + record.repetition;
+      if (seenRepetitions.has(repetitionKey)) addError(errors, "duplicate_repetition");
+      seenRepetitions.add(repetitionKey);
+    }
     if (typeof record.preprocessVersion !== "string" || !CODE.test(record.preprocessVersion)) addError(errors, "invalid_preprocess_version");
+    try {
+      const clipIdentity = captureContentIdentity(record);
+      if (seenClipContents.has(clipIdentity)) addError(errors, "duplicate_capture_content");
+      seenClipContents.add(clipIdentity);
+    } catch {}
     if (!finiteNumber(record.fps) || record.fps <= 0 || record.fps > 120) addError(errors, "invalid_fps");
     const conditions = record.conditions;
     const conditionLists = manifest.conditions;
@@ -146,7 +190,7 @@ export function validateLandmarkRecords(records, manifest = {}) {
 }
 
 function assertApprovedManifest(manifest, consentCode, metricsDisclosureAccepted) {
-  if (!manifest || manifest.approved !== true || manifest.schemaVersion !== SCHEMA_VERSION) {
+  if (!manifest || manifest.approved !== true || manifest.schemaVersion !== PILOT_MANIFEST_SCHEMA_VERSION) {
     throw captureError("capture_requires_approved_manifest", "Capture requires an advisor-approved pilot manifest.");
   }
   const codeLists = [manifest.signers, manifest.allowedSigns, manifest.consentCodes];
@@ -163,6 +207,9 @@ function assertApprovedManifest(manifest, consentCode, metricsDisclosureAccepted
   }
   if (typeof manifest.preprocessVersion !== "string" || !CODE.test(manifest.preprocessVersion)) {
     throw captureError("invalid_pilot_manifest", "The approved manifest must pin a preprocessing version.");
+  }
+  if (!SHA256.test(manifest.captureContractSha256 ?? "")) {
+    throw captureError("invalid_pilot_manifest", "The approved manifest must pin the capture-contract fingerprint.");
   }
   if (typeof consentCode !== "string" || !manifest.consentCodes.includes(consentCode)) {
     throw captureError("missing_consent", "Choose a consent code from the approved manifest before capture.");
@@ -204,6 +251,54 @@ function mapHolisticResult(result, indices, timestampMs) {
   });
 }
 
+function isActiveSession(session) {
+  return activeCapture === session && !session.stopped;
+}
+
+function stopSessionTracks(session) {
+  if (!session.stream || session.streamStopped) return;
+  session.streamStopped = true;
+  for (const track of session.stream.getTracks?.() ?? []) {
+    try { track.stop(); } catch {}
+  }
+}
+
+async function closeSessionLandmarker(session) {
+  if (!session.landmarker || session.landmarkerClosed) return;
+  session.landmarkerClosed = true;
+  try { await session.landmarker.close?.(); } catch {}
+}
+
+async function disposeSession(session) {
+  if (!session) return;
+  session.stopped = true;
+  if (activeCapture === session) activeCapture = null;
+  if (session.requestId != null) {
+    globalThis.cancelAnimationFrame?.(session.requestId);
+    session.requestId = null;
+  }
+  stopSessionTracks(session);
+  if (session.stream && session.videoElement?.srcObject === session.stream) {
+    try { session.videoElement.pause?.(); } catch {}
+    try { session.videoElement.srcObject = null; } catch {}
+  }
+  await closeSessionLandmarker(session);
+}
+
+function watchForStreamLoss(session) {
+  const reportStreamLoss = () => {
+    if (!isActiveSession(session)) return;
+    const error = captureError("camera_stream_ended", "Kamera bağlantısı kesildi.");
+    void disposeSession(session).then(() => {
+      try { session.onError(error); } catch {}
+    });
+  };
+  session.stream.addEventListener?.("inactive", reportStreamLoss, { once: true });
+  for (const track of session.stream.getTracks?.() ?? []) {
+    track.addEventListener?.("ended", reportStreamLoss, { once: true });
+  }
+}
+
 export async function startCapture({
   videoElement,
   onFrame = () => {},
@@ -221,21 +316,41 @@ export async function startCapture({
   if (!videoElement) throw captureError("video_element_required", "A preview element is required.");
   if (typeof shouldProcessFrame !== "function") throw captureError("invalid_capture_option", "shouldProcessFrame must be a function.");
   if (!mediaDevices?.getUserMedia) throw captureError("camera_unavailable", "This browser does not provide a camera.");
-  let landmarker;
-  let stream;
+  const session = {
+    stream: null,
+    streamStopped: false,
+    videoElement,
+    landmarker: null,
+    landmarkerClosed: false,
+    onError,
+    requestId: null,
+    previousTimestampMs: -Infinity,
+    lastVideoTime: -1,
+    stopped: false,
+  };
+  activeCapture = session;
   try {
-    landmarker = await createLandmarker({ assetManifest });
-    stream = await mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false });
-    const session = { stream, videoElement, landmarker, requestId: null, previousTimestampMs: -Infinity, lastVideoTime: -1, stopped: false };
-    activeCapture = session;
-    videoElement.srcObject = stream;
+    session.landmarker = await createLandmarker({ assetManifest });
+    if (!isActiveSession(session)) throw captureError("capture_cancelled", "Camera capture was stopped before setup completed.");
+    session.stream = await mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false });
+    if (!isActiveSession(session)) {
+      await disposeSession(session);
+      throw captureError("capture_cancelled", "Camera capture was stopped while camera permission was pending.");
+    }
+    watchForStreamLoss(session);
+    videoElement.srcObject = session.stream;
     await videoElement.play();
+    if (!isActiveSession(session)) {
+      await disposeSession(session);
+      throw captureError("capture_cancelled", "Camera capture was stopped before the preview started.");
+    }
     const processFrame = async () => {
-      if (session.stopped || activeCapture !== session) return;
+      if (!isActiveSession(session)) return;
       try {
         if (shouldProcessFrame() && videoElement.readyState >= 2 && videoElement.currentTime !== session.lastVideoTime) {
           const timestampMs = globalThis.performance.now();
-          const result = await landmarker.detectForVideo(videoElement, timestampMs);
+          const result = await session.landmarker.detectForVideo(videoElement, timestampMs);
+          if (!isActiveSession(session)) return;
           const frame = mapHolisticResult(result, manifest.landmarkIndices, timestampMs);
           if (frame.timestampMs > session.previousTimestampMs) {
             session.previousTimestampMs = frame.timestampMs;
@@ -243,28 +358,18 @@ export async function startCapture({
             onFrame(frame);
           }
         }
-        if (!session.stopped) session.requestId = globalThis.requestAnimationFrame(processFrame);
+        if (isActiveSession(session)) session.requestId = globalThis.requestAnimationFrame(processFrame);
       } catch (error) {
-        try { onError(error); } finally { await stopCapture(); }
+        try { onError(error); } finally { await disposeSession(session); }
       }
     };
     session.requestId = globalThis.requestAnimationFrame(processFrame);
     return { stop: stopCapture };
   } catch (error) {
-    if (activeCapture?.stream === stream) {
-      activeCapture.stopped = true;
-      if (activeCapture.requestId != null) globalThis.cancelAnimationFrame?.(activeCapture.requestId);
-      activeCapture = null;
+    await disposeSession(session);
+    if (error.code !== "capture_cancelled") {
+      try { onError(error); } catch {}
     }
-    if (stream) {
-      try { for (const track of stream.getTracks?.() ?? []) track.stop(); } catch {}
-    }
-    if (videoElement) {
-      try { videoElement.pause?.(); } catch {}
-      try { videoElement.srcObject = null; } catch {}
-    }
-    try { await landmarker?.close?.(); } catch {}
-    try { onError(error); } catch {}
     throw error;
   }
 }
@@ -272,18 +377,7 @@ export async function startCapture({
 export async function stopCapture() {
   const session = activeCapture;
   if (!session) return;
-  activeCapture = null;
-  session.stopped = true;
-  if (session.requestId != null) globalThis.cancelAnimationFrame(session.requestId);
-  try {
-    for (const track of session.stream.getTracks()) {
-      try { track.stop(); } catch {}
-    }
-  } finally {
-    try { session.videoElement.pause?.(); } catch {}
-    try { session.videoElement.srcObject = null; } catch {}
-    try { await session.landmarker.close?.(); } catch {}
-  }
+  await disposeSession(session);
 }
 
 export function exportLandmarkRecords(records, manifest) {

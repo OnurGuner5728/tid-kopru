@@ -1,12 +1,14 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://tid-kopru.invalid/schema/sign-pilot-record-v1.json",
+  "$id": "https://tid-kopru.invalid/schema/sign-pilot-record-v1.1.json",
   "title": "TİD Köprü sign-pilot landmark record",
   "description": "Pseudonymous landmark data only. Approved sign IDs and consent evidence are managed outside this schema.",
   "type": "object",
   "additionalProperties": false,
   "required": [
     "schemaVersion",
+    "captureId",
+    "captureContractSha256",
     "signerCode",
     "consentCode",
     "signId",
@@ -17,7 +19,9 @@
     "preprocessVersion"
   ],
   "properties": {
-    "schemaVersion": { "const": "1.0" },
+    "schemaVersion": { "const": "1.1" },
+    "captureId": { "type": "string", "pattern": "^[a-fA-F0-9]{32}$" },
+    "captureContractSha256": { "type": "string", "pattern": "^[a-fA-F0-9]{64}$" },
     "signerCode": { "$ref": "#/$defs/code" },
     "consentCode": { "$ref": "#/$defs/code" },
     "signId": { "$ref": "#/$defs/code" },

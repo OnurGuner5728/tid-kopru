@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import math
 import numpy as np
@@ -9,8 +10,11 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 PILOT_GATES = {
+    "minimumIdleMinutes": 10.0,
+    "minimumIdleWindowsPerMinute": 60,
     "macroF1Minimum": 0.80,
     "falseAcceptanceRateMaximum": 0.05,
+    "partialFalseAcceptanceRateMaximum": 0.05,
     "falseWordsPerMinuteMaximum": 1.0,
     "lowConfidenceRejectionRateMinimum": 0.90,
     "p95ModelLatencyMsMaximum": 1500.0,
@@ -60,7 +64,7 @@ def classification_summary(true_labels: Sequence[str], predictions: Sequence[dic
 
 def evaluate_pilot_metrics(true_labels: Sequence[str], predictions: Sequence[dict], idle_predictions: Sequence[dict],
                            idle_minutes: float, latency_ms: Sequence[float], allowed_signs: Sequence[str],
-                           confidence_threshold: float) -> dict:
+                           confidence_threshold: float, *, idle_windows_processed: int) -> dict:
     if not true_labels or len(true_labels) != len(predictions):
         raise ValueError("true labels and predictions must have equal non-zero lengths")
     if (not isinstance(allowed_signs, Sequence) or isinstance(allowed_signs, (str, bytes)) or
@@ -69,31 +73,68 @@ def evaluate_pilot_metrics(true_labels: Sequence[str], predictions: Sequence[dic
         raise ValueError("approved sign IDs must be non-empty and unique")
     if any(not isinstance(label, str) or label not in set(allowed_signs) | RESERVED for label in true_labels):
         raise ValueError("true labels must be approved signs or reserved rejection classes")
+    missing_reject_labels = RESERVED - set(true_labels)
+    if missing_reject_labels:
+        raise ValueError("held-out test data must include each reserved class: " + ", ".join(sorted(missing_reject_labels)))
     if not isinstance(idle_minutes, (int, float)) or isinstance(idle_minutes, bool) or idle_minutes <= 0 or not math.isfinite(idle_minutes):
         raise ValueError("positive finite idle duration is required")
-    if not isinstance(idle_predictions, Sequence) or not isinstance(latency_ms, Sequence) or not latency_ms:
+    if (not isinstance(idle_windows_processed, int) or isinstance(idle_windows_processed, bool)
+            or idle_windows_processed <= 0):
+        raise ValueError("at least one processed idle window is required")
+    if idle_minutes < PILOT_GATES["minimumIdleMinutes"]:
+        raise ValueError("at least 10 minutes of measured idle capture are required")
+    if idle_windows_processed < math.ceil(idle_minutes * PILOT_GATES["minimumIdleWindowsPerMinute"]):
+        raise ValueError("idle coverage requires at least 60 processed one-second windows per minute")
+    if (not isinstance(idle_predictions, Sequence) or isinstance(idle_predictions, (str, bytes))
+            or not isinstance(latency_ms, Sequence) or not latency_ms):
         raise ValueError("idle predictions and Android latency samples are required")
     if any(not isinstance(value, (int, float)) or isinstance(value, bool) or not math.isfinite(value) or value <= 0 for value in latency_ms):
         raise ValueError("latency samples must be finite and non-negative")
     if not isinstance(confidence_threshold, (int, float)) or isinstance(confidence_threshold, bool) or not math.isfinite(confidence_threshold) or not 0 <= confidence_threshold <= 1:
         raise ValueError("confidence threshold must be finite and within [0, 1]")
-    if any(not isinstance(item, Mapping) for item in idle_predictions):
-        raise ValueError("idle predictions must be objects")
+    valid_classes = set(allowed_signs) | RESERVED
+    for item in predictions:
+        if not isinstance(item, Mapping):
+            raise ValueError("predictions must be objects")
+        sign_id = item.get("signId")
+        confidence = item.get("confidence")
+        if not isinstance(sign_id, str) or sign_id not in valid_classes:
+            raise ValueError("prediction signId must be a known model class")
+        if not isinstance(item.get("accepted"), bool):
+            raise ValueError("prediction accepted value must be boolean")
+        if (not isinstance(confidence, (int, float)) or isinstance(confidence, bool)
+                or not math.isfinite(confidence) or not 0 <= confidence <= 1):
+            raise ValueError("prediction confidence must be finite and within [0, 1]")
+    seen_idle_windows = set()
+    for item in idle_predictions:
+        if not isinstance(item, Mapping):
+            raise ValueError("idle predictions must be objects")
+        window_id = item.get("windowId")
+        sign_id = item.get("signId")
+        confidence = item.get("confidence")
+        if not isinstance(window_id, str) or not window_id.strip() or window_id in seen_idle_windows:
+            raise ValueError("each idle false-word event must identify a unique processed window")
+        seen_idle_windows.add(window_id)
+        if not isinstance(sign_id, str) or sign_id not in valid_classes:
+            raise ValueError("idle prediction signId must be a known model class")
+        if not isinstance(item.get("accepted"), bool):
+            raise ValueError("idle prediction accepted value must be boolean")
+        if (not isinstance(confidence, (int, float)) or isinstance(confidence, bool)
+                or not math.isfinite(confidence) or not 0 <= confidence <= 1):
+            raise ValueError("idle prediction confidence must be finite and within [0, 1]")
 
     classes = sorted(set(true_labels) | set(allowed_signs) | RESERVED)
     summary = classification_summary(true_labels, predictions, classes, allowed_signs)
-    negative = [index for index, label in enumerate(true_labels) if label not in allowed_signs]
-    false_accepts = sum(predictions[index].get("accepted") is True and predictions[index].get("signId") in allowed_signs for index in negative)
-    false_acceptance = false_accepts / len(negative) if negative else None
-    for prediction in predictions:
-        if not isinstance(prediction, Mapping):
-            raise ValueError("predictions must be objects")
-        confidence = prediction.get("confidence")
-        if (not isinstance(confidence, (int, float)) or isinstance(confidence, bool) or
-                not math.isfinite(confidence) or not 0 <= confidence <= 1):
-            raise ValueError("prediction confidence must be finite and within [0, 1]")
-        if not isinstance(prediction.get("accepted"), bool):
-            raise ValueError("prediction accepted value must be boolean")
+    blank_unknown = [index for index, label in enumerate(true_labels) if label in {"BLANK", "UNKNOWN"}]
+    partial = [index for index, label in enumerate(true_labels) if label == "PARTIAL"]
+    false_acceptance = sum(
+        predictions[index]["accepted"] is True and predictions[index]["signId"] in allowed_signs
+        for index in blank_unknown
+    ) / len(blank_unknown)
+    partial_false_acceptance = sum(
+        predictions[index]["accepted"] is True and predictions[index]["signId"] in allowed_signs
+        for index in partial
+    ) / len(partial)
     low_confidence_predictions = [item for item in predictions if item["confidence"] < confidence_threshold]
     low_confidence_rate = (
         sum(item["accepted"] is not True for item in low_confidence_predictions) / len(low_confidence_predictions)
@@ -105,7 +146,8 @@ def evaluate_pilot_metrics(true_labels: Sequence[str], predictions: Sequence[dic
     p95 = latencies[max(0, math.ceil(0.95 * len(latencies)) - 1)]
     gates = {
         "macroF1": summary["macroF1"] >= PILOT_GATES["macroF1Minimum"],
-        "falseAcceptanceRate": false_acceptance is not None and false_acceptance <= PILOT_GATES["falseAcceptanceRateMaximum"],
+        "falseAcceptanceRate": false_acceptance <= PILOT_GATES["falseAcceptanceRateMaximum"],
+        "partialFalseAcceptanceRate": partial_false_acceptance <= PILOT_GATES["partialFalseAcceptanceRateMaximum"],
         "falseWordsPerMinute": false_words_per_minute <= PILOT_GATES["falseWordsPerMinuteMaximum"],
         "lowConfidenceRejectionRate": low_confidence_rate is not None and low_confidence_rate >= PILOT_GATES["lowConfidenceRejectionRateMinimum"],
         "p95ModelLatencyMs": p95 <= PILOT_GATES["p95ModelLatencyMsMaximum"],
@@ -113,8 +155,11 @@ def evaluate_pilot_metrics(true_labels: Sequence[str], predictions: Sequence[dic
     return {
         **summary,
         "falseAcceptanceRate": false_acceptance,
+        "partialFalseAcceptanceRate": partial_false_acceptance,
         "falseWordsPerMinute": false_words_per_minute,
+        "idleWindowsProcessed": idle_windows_processed,
         "lowConfidenceRejectionRate": low_confidence_rate,
+        "lowConfidenceRejectionInterpretation": "policy-invariant",
         "p95ModelLatencyMs": p95,
         "confidenceThreshold": float(confidence_threshold),
         "gates": gates,
@@ -123,23 +168,29 @@ def evaluate_pilot_metrics(true_labels: Sequence[str], predictions: Sequence[dic
 
 
 def evaluate_checkpoint(checkpoint_path, dataset_path, approval_manifest, *, idle_predictions,
-                        idle_minutes, latency_ms, android_device, repo_root=None) -> dict:
+                        idle_windows_processed, idle_minutes, latency_ms, android_device,
+                        measurement_sha256, repo_root=None) -> dict:
     """Evaluate a trained checkpoint once on its signer-disjoint test partition."""
     import hashlib
+    import re
     import torch
 
     from tools.sign_model.preprocess import apply_feature_scaler, preprocess_record, preprocessing_hash
     from tools.sign_model.split_by_signer import assert_signer_disjoint, split_by_signer
     from tools.sign_model.train import (
         RESERVED_LABELS, TemporalSignCNN, TrainingGateError, _read_jsonl_outside_repo,
-        dataset_sha256, predict_with_rejection, validate_training_gate,
+        dataset_sha256, predict_with_rejection, reserved_split_coverage_errors, validate_training_gate,
     )
+    from tools.sign_pilot.capture_contract import capture_contract_sha256_from_manifest
 
     if not isinstance(android_device, Mapping) or android_device.get("platform") != "Android" or not isinstance(android_device.get("model"), str) or not android_device["model"].strip():
         raise ValueError("verified Android device metadata is required")
+    if not isinstance(measurement_sha256, str) or not re.fullmatch(r"[a-f0-9]{64}", measurement_sha256):
+        raise ValueError("the exact Android measurements file SHA-256 is required")
     root = Path(repo_root).resolve() if repo_root else Path(__file__).resolve().parents[2]
     data_path, records = _read_jsonl_outside_repo(dataset_path, root)
     validate_training_gate(approval_manifest, records, repo_root=root, dataset_path=data_path)
+    expected_capture_contract = capture_contract_sha256_from_manifest(approval_manifest)
     data_digest = dataset_sha256(data_path)
     checkpoint = Path(checkpoint_path).resolve()
     if checkpoint == root or root in checkpoint.parents or not checkpoint.is_file():
@@ -148,11 +199,16 @@ def evaluate_checkpoint(checkpoint_path, dataset_path, approval_manifest, *, idl
     payload = torch.load(checkpoint, map_location="cpu", weights_only=True)
     if not isinstance(payload, dict) or payload.get("datasetSha256") != data_digest:
         raise TrainingGateError(["checkpoint_dataset_identity_mismatch"])
+    if payload.get("captureContractSha256") != expected_capture_contract:
+        raise TrainingGateError(["checkpoint_capture_contract_identity_mismatch"])
     seed = payload.get("randomSeed")
     if not isinstance(seed, int) or isinstance(seed, bool):
         raise TrainingGateError(["checkpoint_run_seed_missing"])
     splits = split_by_signer(records, seed=seed)
     assert_signer_disjoint(splits)
+    coverage_errors = reserved_split_coverage_errors(splits)
+    if coverage_errors:
+        raise TrainingGateError(coverage_errors)
     expected_signers = {name: splits[name]["signerCodes"] for name in ("train", "validation", "test")}
     if payload.get("signerCodes") != expected_signers:
         raise TrainingGateError(["checkpoint_signer_split_identity_mismatch"])
@@ -178,11 +234,14 @@ def evaluate_checkpoint(checkpoint_path, dataset_path, approval_manifest, *, idl
     report = evaluate_pilot_metrics(
         [item["signId"] for item in test_records], predictions, idle_predictions, idle_minutes,
         latency_ms, approval_manifest["allowedSigns"], payload["confidenceThreshold"],
+        idle_windows_processed=idle_windows_processed,
     )
     report["checkpointSha256"] = checkpoint_digest
     report["datasetSha256"] = data_digest
+    report["captureContractSha256"] = expected_capture_contract
     report["androidDevice"] = dict(android_device)
     report["allowedSignIds"] = list(approval_manifest["allowedSigns"])
+    report["measurementSha256"] = measurement_sha256
     return report
 
 
@@ -191,16 +250,22 @@ def _main(argv=None) -> int:
     parser.add_argument("--checkpoint", required=True)
     parser.add_argument("--dataset", required=True)
     parser.add_argument("--approval-manifest", required=True)
-    parser.add_argument("--measurements", required=True, help="JSON with idlePredictions, idleMinutes, latencyMs, androidDevice")
+    parser.add_argument(
+        "--measurements", required=True,
+        help="JSON with idlePredictions, idleWindowsProcessed, idleMinutes, latencyMs, androidDevice",
+    )
     parser.add_argument("--output", required=True, help="Aggregate JSON report path")
     parser.add_argument("--repo-root")
     args = parser.parse_args(argv)
     manifest = json.loads(Path(args.approval_manifest).read_text(encoding="utf-8"))
-    measurements = json.loads(Path(args.measurements).read_text(encoding="utf-8"))
+    measurement_bytes = Path(args.measurements).read_bytes()
+    measurements = json.loads(measurement_bytes.decode("utf-8"))
     report = evaluate_checkpoint(
         args.checkpoint, args.dataset, manifest,
         idle_predictions=measurements["idlePredictions"], idle_minutes=measurements["idleMinutes"],
+        idle_windows_processed=measurements["idleWindowsProcessed"],
         latency_ms=measurements["latencyMs"], android_device=measurements["androidDevice"],
+        measurement_sha256=hashlib.sha256(measurement_bytes).hexdigest(),
         repo_root=args.repo_root,
     )
     Path(args.output).write_text(json.dumps(report, ensure_ascii=False, sort_keys=True, indent=2, allow_nan=False) + "\n", encoding="utf-8")

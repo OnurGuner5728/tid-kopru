@@ -119,6 +119,8 @@ git commit -m "feat: add local landmark capture for approved pilot data"
 
 ### Task 3: Train, split, reject, and export the 20-sign model
 
+Implementation hardening: schema 1.1 records carry a stable capture-contract fingerprint through training approval, checkpoint, evaluation report, and model export. The fingerprint covers the selected MediaPipe WASM loader/binary hashes as well as model/runtime hashes. BLANK/UNKNOWN false acceptance is measured with its own denominator; PARTIAL is reported separately and cannot dilute it. A provisional ≤5% PARTIAL false-acceptance guard, 10-minute/60 one-second-window-per-minute idle coverage floor, and positive window identity are fail-closed checks, not pilot claims; confirm metric definitions with the TİD advisor before reporting real results. Export recomputes the checkpoint/test metrics and checks the exact Android measurement file hash before it accepts the report.
+
 **Files:**
 - Create: `tools/sign_model/requirements.txt`
 - Create: `tools/sign_model/split_by_signer.py`
