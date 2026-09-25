@@ -1,0 +1,16 @@
+{
+  "name": "TİD Köprü — İletişim Yardımcısı",
+  "short_name": "TİD Köprü",
+  "description": "Türk İşaret Dili kullanan kişiler ile işiten kişiler için yüz yüze iletişim yardımcısı.",
+  "lang": "tr",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#f6f3ea",
+  "theme_color": "#0b6b61",
+  "icons": [
+    {"src": "./icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any"},
+    {"src": "./icons/maskable.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable"}
+  ]
+}
