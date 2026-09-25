@@ -6,6 +6,7 @@ import { SignRecognitionClient } from './sign-recognition.mjs';
 import { downloadCameraModel } from './onnx-runtime-loader.mjs';
 import { translateTidGlossToTurkish } from './tid-transfer.mjs';
 import { TRANSLATION_MODES, createPrivacyModeController } from './privacy-mode.mjs';
+import { createCloudSession } from './cloud-session.mjs';
 
 const elements = {
   networkDot: document.querySelector('#network-dot'),
@@ -51,6 +52,11 @@ const elements = {
   modeInputs: [...document.querySelectorAll('[name="translation-mode"]')],
   cloudConsent: document.querySelector('#cloud-consent'),
   cloudDisclosure: document.querySelector('#cloud-disclosure'),
+  cloudApiKey: document.querySelector('#cloud-api-key'),
+  cloudProxyUrl: document.querySelector('#cloud-proxy-url'),
+  cloudKeySet: document.querySelector('#cloud-key-set'),
+  cloudKeyClear: document.querySelector('#cloud-key-clear'),
+  cloudKeyStatus: document.querySelector('#cloud-key-status'),
 };
 
 let recognition;
@@ -67,6 +73,7 @@ let cameraClient = null;
 let cameraInstalled = false;
 let cameraCandidateReady = false;
 let privacyController;
+const cloudSession = createCloudSession();
 
 function initializePrivacyModes() {
   privacyController = createPrivacyModeController({
@@ -86,12 +93,27 @@ function initializePrivacyModes() {
     if (elements.cloudConsent.checked) privacyController.grantCloudConsent();
     else privacyController.revokeCloudConsent();
   });
+  elements.cloudKeySet.addEventListener('click', () => {
+    try {
+      cloudSession.setKey(elements.cloudApiKey.value);
+      elements.cloudApiKey.value = '';
+      elements.cloudKeyStatus.textContent = 'Oturum anahtarı hazır. Sayfadan ayrılınca otomatik silinir.';
+    } catch {
+      elements.cloudKeyStatus.textContent = 'Geçerli, yeni bir oturum anahtarı girin.';
+    }
+  });
+  elements.cloudKeyClear.addEventListener('click', () => {
+    cloudSession.clearKey();
+    elements.cloudApiKey.value = '';
+    elements.cloudKeyStatus.textContent = 'Bulut anahtarı temizlendi.';
+  });
   privacyController.registerDisposer(() => {
     try { recognition?.abort?.(); } catch { /* recognition may already be closed */ }
     globalThis.speechSynthesis?.cancel?.();
     void cameraClient?.dispose();
     cameraClient = null;
     cameraInstalled = false;
+    cloudSession.dispose();
   });
 }
 

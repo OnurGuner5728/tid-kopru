@@ -67,6 +67,11 @@ h1 em { color: var(--lime); font-family: Georgia, serif; font-weight: 400; }
 .privacy-disclosures { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 14px; }
 .privacy-disclosures p { margin: 0; padding: 12px 14px; border-radius: 12px; background: #eef5f1; color: var(--muted); font-size: 11px; line-height: 1.45; }
 .privacy-disclosures strong { color: var(--teal-dark); }
+.cloud-settings { margin-top: 14px; padding: 15px 17px; border: 1px solid #e7d5ab; border-radius: 14px; background: #fffaf0; }
+.cloud-settings summary { cursor: pointer; color: #664c1c; font-size: 12px; font-weight: 800; }
+.cloud-settings > p { color: var(--muted); font-size: 11px; line-height: 1.55; }
+.cloud-settings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.cloud-settings input { min-height: 46px; margin-top: 7px; border-radius: 12px; }
 
 .conversation-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; margin: 22px 0; }
 .tool-card { min-width: 0; padding: 34px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--card); box-shadow: var(--shadow); }
@@ -182,7 +187,7 @@ footer p { margin: 0; text-align: right; }
   main { padding: 0 12px 48px; }
   .intro { min-height: auto; padding: 58px 28px 32px; grid-template-columns: 1fr; gap: 36px; border-radius: 26px; }
   .intro-copy { font-size: 16px; }
-  .conversation-grid, .sign-section, .limits, .camera-layout, .mode-options, .privacy-disclosures, .teaching-grid { grid-template-columns: 1fr; }
+  .conversation-grid, .sign-section, .limits, .camera-layout, .mode-options, .privacy-disclosures, .teaching-grid, .cloud-settings-grid { grid-template-columns: 1fr; }
   .tool-card { padding: 26px 20px; }
   .card-description { min-height: auto; }
   .sign-copy { padding: 38px 22px 28px; }

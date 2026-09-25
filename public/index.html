@@ -61,6 +61,23 @@
         <p id="microphone-disclosure"><strong>Mikrofon:</strong> Düğmeye basınca açılır; tarayıcının konuşma hizmeti internet kullanabilir.</p>
         <p id="cloud-disclosure" role="status" aria-live="polite"><strong>Bulut:</strong> Kapalı. Hiçbir kamera klibi gönderilmez.</p>
       </div>
+      <details class="cloud-settings" id="cloud-settings">
+        <summary>İsteğe bağlı NVIDIA ayarları</summary>
+        <p>NVIDIA genel amaçlı video modeli doğrulanmış bir TİD çevirmeni değildir. Sonuç yalnızca düzenlenebilir adaydır. Gönderim için ayrıca yukarıdaki bulut iznini açmanız gerekir. Kullanım NVIDIA API deneme koşullarına tabidir.</p>
+        <div class="cloud-settings-grid">
+          <label class="field-label" for="cloud-api-key">Bu oturum için yeni API anahtarı
+            <input id="cloud-api-key" type="password" autocomplete="off" spellcheck="false" placeholder="Anahtar cihazda saklanmaz">
+          </label>
+          <label class="field-label" for="cloud-proxy-url">Güvenli proxy adresi (isteğe bağlı)
+            <input id="cloud-proxy-url" type="url" autocomplete="off" placeholder="https://… veya /api/nvidia">
+          </label>
+        </div>
+        <div class="button-row">
+          <button class="button secondary" id="cloud-key-set" type="button">Oturum anahtarını kullan</button>
+          <button class="button secondary" id="cloud-key-clear" type="button">Anahtarı temizle</button>
+        </div>
+        <p class="inline-status" id="cloud-key-status" role="status" aria-live="polite">Bulut anahtarı ayarlanmadı.</p>
+      </details>
     </section>
 
     <section class="conversation-grid" aria-label="İletişim araçları">
