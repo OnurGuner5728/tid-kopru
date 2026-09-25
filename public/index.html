@@ -140,6 +140,21 @@
           </div>
         </div>
       </div>
+      <details class="teaching-panel" id="teaching-panel">
+        <summary>Kişisel işaret öğret</summary>
+        <p>Kendi işaret örneklerinizi en az üç kez kaydedin. Yalnızca sayısal el, yüz ve gövde noktaları bu cihazda saklanır; kamera görüntüsü kaydedilmez.</p>
+        <div class="teaching-grid">
+          <label class="field-label" for="teaching-label">Öğretilecek sözlük işareti
+            <select id="teaching-label"><option value="">İşaret seçin</option></select>
+          </label>
+          <div class="button-row">
+            <button class="button primary" id="teaching-record" type="button" disabled>Örnek kaydet</button>
+            <button class="button secondary" id="teaching-delete" type="button" disabled>Bu işareti sil</button>
+            <button class="button coral" id="teaching-clear" type="button">Tüm kişisel veriyi sil</button>
+          </div>
+        </div>
+        <p class="inline-status" id="teaching-status" role="status" aria-live="polite">İşaret sözlüğü yükleniyor…</p>
+      </details>
     </section>
 
     <section class="sign-section" aria-labelledby="sign-title">

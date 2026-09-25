@@ -115,6 +115,11 @@ textarea:focus, input:focus { outline: none; border-color: var(--teal); box-shad
 .camera-candidate textarea:disabled { color: var(--muted); background: #f1f2ee; }
 .camera-candidate .button-row { margin-top: 10px; }
 .camera-actions { margin-top: 14px; }
+.teaching-panel { margin-top: 22px; padding: 18px; border: 1px solid var(--line); border-radius: 18px; background: #eef5f1; }
+.teaching-panel summary { cursor: pointer; color: var(--teal-dark); font-weight: 800; }
+.teaching-panel > p { color: var(--muted); font-size: 12px; line-height: 1.55; }
+.teaching-grid { display: grid; grid-template-columns: minmax(220px, .55fr) 1fr; gap: 18px; align-items: end; }
+.teaching-grid select { width: 100%; min-height: 48px; margin-top: 8px; padding: 0 14px; border: 1px solid var(--line); border-radius: 12px; color: var(--ink); background: white; }
 
 .sign-section { display: grid; grid-template-columns: .9fr 1.1fr; min-height: 570px; overflow: hidden; border-radius: 30px; color: white; background: var(--night); }
 .sign-copy { padding: 52px 46px; }
@@ -177,7 +182,7 @@ footer p { margin: 0; text-align: right; }
   main { padding: 0 12px 48px; }
   .intro { min-height: auto; padding: 58px 28px 32px; grid-template-columns: 1fr; gap: 36px; border-radius: 26px; }
   .intro-copy { font-size: 16px; }
-  .conversation-grid, .sign-section, .limits, .camera-layout, .mode-options, .privacy-disclosures { grid-template-columns: 1fr; }
+  .conversation-grid, .sign-section, .limits, .camera-layout, .mode-options, .privacy-disclosures, .teaching-grid { grid-template-columns: 1fr; }
   .tool-card { padding: 26px 20px; }
   .card-description { min-height: auto; }
   .sign-copy { padding: 38px 22px 28px; }
