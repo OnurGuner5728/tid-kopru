@@ -1,8 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { createHash, webcrypto } from 'node:crypto';
 
 import { normalizeLandmarkFrame } from '../public/landmark-normalization.mjs';
-import { createLandmarkRuntime } from '../public/landmark-runtime.mjs';
+import { createLandmarkRuntime, verifyRuntimeManifestFiles } from '../public/landmark-runtime.mjs';
 
 const hand = (offsetX = 0, scale = 1) => Array.from({ length: 21 }, (_, index) => ({
   x: offsetX + scale * (index % 5), y: 10 + scale * Math.floor(index / 5), z: scale * index / 20,
@@ -65,4 +66,19 @@ test('runtime throttles frames to 15 fps, keeps timestamps increasing, and dispo
   await runtime.dispose();
   assert.equal(worker.terminated, true);
   assert.equal(messages.at(-1).type, 'dispose');
+});
+
+test('runtime verification rejects corrupted same-origin assets before camera startup', async () => {
+  const bytes = new TextEncoder().encode('verified runtime');
+  const file = {
+    path: 'assets/runtime/models/hand_landmarker.task',
+    sha256: createHash('sha256').update(bytes).digest('hex'),
+    license: 'Apache-2.0', bytes: bytes.byteLength,
+  };
+  const options = {
+    baseUrl: 'https://example.test/app/', cryptoProvider: webcrypto,
+    fetcher: async () => new Response(bytes),
+  };
+  assert.equal(await verifyRuntimeManifestFiles({ schemaVersion: 1, files: [file] }, options), true);
+  await assert.rejects(verifyRuntimeManifestFiles({ schemaVersion: 1, files: [{ ...file, sha256: '0'.repeat(64) }] }, options), { code: 'runtime_hash_mismatch' });
 });

@@ -9,7 +9,7 @@ const source = await readFile(new URL('../public/sw-policy.js', import.meta.url)
 const context = { URL, Response, crypto: webcrypto };
 context.globalThis = context;
 vm.runInNewContext(source, context);
-const { getOfflineAwareResponse, getCameraModelResponse, getReviewedMediaResponse, getAppRelativePath, shouldDeleteCache } = context.TidKopruCachePolicy;
+const { getOfflineAwareResponse, getCameraModelResponse, getReviewedMediaResponse, getAppRelativePath, shouldDeleteCache, isPrivateRequest } = context.TidKopruCachePolicy;
 
 test('offline navigation returns the cached app shell', async () => {
   const shell = new Response('<main>TİD Köprü</main>');
@@ -221,7 +221,7 @@ test('app shell excludes large avatar downloads and includes its runtime depende
   const assets = [...match[1].matchAll(/'([^']+)'/gu)].map((entry) => entry[1]);
 
   assert.equal(assets.includes('./assets/avatar/rain.glb'), false);
-  assert.equal(assets.includes('./assets/avatar/saved-poses.json'), false);
+  assert.equal(assets.includes('./assets/avatar/saved-poses.json'), true);
   assert.equal(assets.includes('./assets/tid/approved-media.webm'), false);
   assert.ok(assets.includes('./assets/tid/content-manifest.json'));
   assert.ok(assets.includes('./assets/tid/reviewed-content.json'));
@@ -230,21 +230,32 @@ test('app shell excludes large avatar downloads and includes its runtime depende
   assert.ok(assets.includes('./assets/tid/morphology-rules.json'));
   for (const asset of [
     './', './index.html', './styles.css', './app.mjs', './avatar.mjs', './matcher.mjs',
-    './tid-output-ui.mjs',
+    './tid-output-ui.mjs', './tid-display-plan.mjs', './letter-cards.mjs', './procedural-rig.mjs',
+    './privacy-mode.mjs', './app-state.mjs', './landmark-runtime.mjs', './landmark-worker.js',
+    './landmark-normalization.mjs', './personal-sign-store.mjs', './personal-training.mjs',
+    './personal-sign-recognizer.mjs', './hybrid-recognition.mjs', './cloud-session.mjs', './nvidia-candidate.mjs',
     './tid-to-turkish.mjs', './sign-recognition.mjs', './sign-recognition-worker.js', './onnx-runtime-loader.mjs',
     './sw-policy.js', './manifest.webmanifest', './icons/icon.svg', './icons/maskable.svg',
-    './vendor/three/three.module.js', './vendor/three/addons/loaders/GLTFLoader.js',
-    './vendor/three/addons/controls/OrbitControls.js', './vendor/three/addons/utils/BufferGeometryUtils.js'
+    './assets/runtime/runtime-manifest.json', './assets/avatar/saved-poses.json',
+    './vendor/three/three.module.js', './vendor/three/addons/controls/OrbitControls.js'
   ]) {
     assert.ok(assets.includes(asset), `missing app-shell asset: ${asset}`);
   }
 });
 
 test('app shell contains only the current release cache prefix policy', () => {
-  assert.match(workerSource, /const CACHE_NAME = 'tid-kopru-v4'/u);
+  assert.match(workerSource, /const CACHE_NAME = 'tid-kopru-v5'/u);
   assert.match(workerSource, /shouldDeleteCache\(name, CACHE_NAME\)/u);
   assert.match(workerSource, /getReviewedMediaResponse/u);
   assert.match(workerSource, /getCameraModelResponse/u);
+});
+
+test('service worker never caches private camera, landmark, key, or provider requests', () => {
+  assert.match(workerSource, /isPrivateRequest/u);
+  for (const marker of ['camera-blob', 'landmarks', 'api-key', 'provider-response']) {
+    assert.equal(isPrivateRequest({ method: 'GET', url: `https://tid.test/${marker}`, headers: { get: () => null } }), true);
+  }
+  assert.equal(isPrivateRequest({ method: 'POST', url: 'https://tid.test/api', headers: { get: () => null } }), true);
 });
 
 const appHtml = await readFile(new URL('../public/index.html', import.meta.url), 'utf8');

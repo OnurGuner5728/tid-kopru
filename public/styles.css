@@ -116,6 +116,7 @@ textarea:focus, input:focus { outline: none; border-color: var(--teal); box-shad
 .camera-preview[hidden] { display: none; }
 .camera-candidate { min-width: 0; padding: 20px; border: 1px solid var(--line); border-radius: 18px; background: #faf9f3; }
 .camera-candidate h3 { margin: 0 0 18px; font-size: 17px; letter-spacing: -.02em; }
+.candidate-source { margin: -9px 0 14px; color: var(--teal); font-size: 12px; font-weight: 800; }
 .camera-candidate textarea { min-height: 92px; }
 .camera-candidate textarea:disabled { color: var(--muted); background: #f1f2ee; }
 .camera-candidate .button-row { margin-top: 10px; }
@@ -142,6 +143,8 @@ textarea:focus, input:focus { outline: none; border-color: var(--teal); box-shad
 .translation-actions { min-height: 48px; }
 .translation-progress { min-height: 18px; margin: 10px 0 0; color: rgba(255,255,255,.65); font-size: 12px; }
 .translation-actions button[hidden] { display: none; }
+.playback-control { display: inline-flex; align-items: center; gap: 7px; color: rgba(255,255,255,.72); font-size: 12px; }
+.playback-control select { min-height: 48px; padding: 0 10px; border: 0; border-radius: 12px; color: var(--ink); background: #edf0e9; }
 .avatar-panel { min-width: 0; display: grid; grid-template-rows: auto auto 1fr auto; align-content: start; padding: 22px; background: radial-gradient(circle at 50% 35%, #284b45 0, #102622 56%, #0b1c19 100%); }
 .avatar-topline { display: flex; justify-content: space-between; align-items: center; padding: 4px 4px 14px; font-size: 11px; text-transform: uppercase; letter-spacing: .12em; }
 .avatar-status { color: var(--lime); }

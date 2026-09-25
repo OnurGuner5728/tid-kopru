@@ -18,6 +18,8 @@ export function createTidOutputController({
   playButton,
   stopButton,
   retryButton,
+  repeatButton = null,
+  stepButton = null,
   sourceText,
   status,
   gloss,
@@ -40,6 +42,7 @@ export function createTidOutputController({
   let generation = 0;
   let activeRequest = 0;
   let resourcesLoading = false;
+  let stepIndex = 0;
 
   function updateControls() {
     const canPlay = currentState === 'ready' && currentResult?.status === 'ready'
@@ -51,6 +54,8 @@ export function createTidOutputController({
     stopButton.disabled = !playing;
     retryButton.hidden = currentState !== 'error';
     retryButton.disabled = translating || playing;
+    if (repeatButton) repeatButton.disabled = !canPlay || playing || translating;
+    if (stepButton) stepButton.disabled = !canPlay || playing || translating;
   }
 
   function renderTidTranslation(result) {
@@ -60,6 +65,7 @@ export function createTidOutputController({
       : ['ready', 'text-only', 'unsupported'].includes(result?.status) ? result.status : 'error';
     currentState = nextState;
     currentResult = nextState === 'error' ? null : result;
+    stepIndex = 0;
     sourceText.textContent = typeof result?.sourceText === 'string' ? result.sourceText : input.value;
     if (nextState === 'ready') {
       const sourceLabel = SOURCE_LABELS[result.sourceClass] ?? 'Onaylı TİD';
@@ -204,6 +210,26 @@ export function createTidOutputController({
     return confirm();
   }
 
+  async function step() {
+    if (playing || translating || currentResult?.status !== 'ready' || !currentResult.segments?.length) return;
+    const result = currentResult;
+    const index = stepIndex % result.segments.length;
+    playing = true;
+    updateControls();
+    try {
+      await player.play([result.segments[index]], {
+        onSegmentStart: (segment) => onMediaSegment(segment, { index, total: result.segments.length }),
+      });
+      stepIndex = (index + 1) % result.segments.length;
+      progress.textContent = `Adım ${index + 1} / ${result.segments.length} gösterildi.`;
+    } catch {
+      setError('Bu adım gösterilemedi. Yeniden deneyebilirsiniz.');
+    } finally {
+      playing = false;
+      updateControls();
+    }
+  }
+
   function setSpeechActive(active) {
     speechActive = active === true;
     updateControls();
@@ -230,12 +256,15 @@ export function createTidOutputController({
   playButton.addEventListener('click', () => play());
   stopButton.addEventListener('click', () => stop());
   retryButton.addEventListener('click', () => retry());
+  repeatButton?.addEventListener('click', () => play());
+  stepButton?.addEventListener('click', () => step());
   setIdle();
 
   return {
     renderTidTranslation,
     confirm,
     play,
+    step,
     stop,
     retry,
     setLoading,

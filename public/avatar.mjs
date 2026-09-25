@@ -20,6 +20,7 @@ export class SignAvatar {
     this.stopRequested = false;
     this.playbackFrameId = null;
     this.playbackResolve = null;
+    this.playbackRate = 1;
   }
 
   async initialize() {
@@ -155,20 +156,20 @@ export class SignAvatar {
 
     for (let step = 0; step <= steps && !this.stopRequested; step += 1) {
       this.applyPose(frames[0], step / steps);
-      await wait(20);
+      await wait(20 / this.playbackRate);
     }
     for (let frame = 0; frame < frames.length - 1 && !this.stopRequested; frame += 1) {
-      await wait(140);
+      await wait(140 / this.playbackRate);
       for (let step = 0; step <= steps && !this.stopRequested; step += 1) {
         this.interpolatePoses(frames[frame], frames[frame + 1], step / steps);
-        await wait(20);
+        await wait(20 / this.playbackRate);
       }
     }
-    if (!this.stopRequested) await wait(520);
+    if (!this.stopRequested) await wait(520 / this.playbackRate);
     const lastFrame = frames.at(-1);
     for (let step = steps; step >= 0 && !this.stopRequested; step -= 1) {
       this.applyPose(lastFrame, step / steps);
-      await wait(20);
+      await wait(20 / this.playbackRate);
     }
     this.applyIdlePose();
     return true;
@@ -183,7 +184,7 @@ export class SignAvatar {
         onProgress({ index, word: words[index], total: words.length, done: false });
         await this.playWord(words[index]);
         onProgress({ index, word: words[index], total: words.length, done: true });
-        if (index < words.length - 1) await wait(220);
+        if (index < words.length - 1) await wait(220 / this.playbackRate);
       }
       return !this.stopRequested;
     } finally {
@@ -241,6 +242,10 @@ export class SignAvatar {
       };
       this.playbackFrameId = requestAnimationFrame(tick);
     });
+  }
+
+  setPlaybackRate(rate) {
+    if (Number.isFinite(rate) && rate >= 0.5 && rate <= 2) this.playbackRate = rate;
   }
 
   stop() {

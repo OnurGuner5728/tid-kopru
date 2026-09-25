@@ -8,7 +8,7 @@ function postError(code, requestId) { self.postMessage({ type: 'error', code, re
 
 async function initialize(urls) {
   const visionModule = await import(urls['vendor/mediapipe/vision_bundle.mjs']);
-  const vision = await visionModule.FilesetResolver.forVisionTasks(new URL('../vendor/mediapipe/wasm/', urls['vendor/mediapipe/vision_bundle.mjs']).href);
+  const vision = await visionModule.FilesetResolver.forVisionTasks(new URL('./wasm/', urls['vendor/mediapipe/vision_bundle.mjs']).href);
   const baseOptions = (modelAssetPath) => ({ modelAssetPath, delegate: 'CPU' });
   handLandmarker = await visionModule.HandLandmarker.createFromOptions(vision, {
     baseOptions: baseOptions(urls['assets/runtime/models/hand_landmarker.task']), runningMode: 'VIDEO', numHands: 2,

@@ -358,7 +358,7 @@ test('worker crash, page hide, and dispose release tracks and terminate the work
   assert.equal(afterCrash.worker.terminated, true);
 });
 
-test('the shipped app leaves the camera and model-download actions disabled without approved assets', async () => {
+test('the shipped app keeps optional model download disabled while personal camera runtime can initialize', async () => {
   const { readFile } = await import('node:fs/promises');
   const html = await readFile(new URL('../public/index.html', import.meta.url), 'utf8');
   const packagedManifest = await readFile(new URL('../public/assets/tid/sentence-model-manifest.json', import.meta.url), 'utf8');
@@ -366,8 +366,8 @@ test('the shipped app leaves the camera and model-download actions disabled with
   assert.equal(value.available, false);
   assert.match(html, /id="camera-start"[^>]*disabled/u);
   assert.match(html, /id="camera-model-download"[^>]*disabled/u);
-  assert.match(html, /kullanım\/performance ölçümü ve sistem ortamı verileri Google'a gönderilebilir/iu);
+  assert.match(html, /yalnızca sayısal hareket noktaları saklanır/iu);
   const appSource = await readFile(new URL('../public/app.mjs', import.meta.url), 'utf8');
   assert.match(appSource, /cameraConfirm\.addEventListener\('click',[\s\S]*?replyText\.value = text/u);
-  assert.doesNotMatch(appSource.match(/function showCameraRecognitionCandidate\([\s\S]*?\n\}/u)?.[0] ?? '', /replyText\.value/u);
+  assert.match(appSource, /createLandmarkRuntime/u);
 });

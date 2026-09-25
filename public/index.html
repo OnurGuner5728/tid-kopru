@@ -133,14 +133,14 @@
         <span class="step-number">03</span>
         <div><p class="kicker">TİD kullanan kişiden</p><h2 id="camera-title">İşareti Türkçe adaya çevir</h2></div>
       </div>
-      <p class="card-description">Model hazır olduğunda kameradan alınan işaret dizisi önce yalnızca gözden geçirmeniz için Türkçe aday olur. Yanıt alanına ancak siz onaylarsanız aktarılır.</p>
-      <p class="camera-notice"><strong>Gizlilik ve ölçüm bilgisi:</strong> MediaPipe görüntüyü cihazda işler; kullanım/performance ölçümü ve sistem ortamı verileri Google'a gönderilebilir. Gerçek katılımcıdan kayıt almadan önce bu açıklama aydınlatma ve onam metninde yer almalıdır. Araç hiçbir ağ bağlantısı kurmadığını iddia etmez. Kamera bu sürümde model bulunmadığı için kapalıdır.</p>
+      <p class="card-description">Kişisel işaret tanıma için önce aşağıdaki öğretme alanında bir işareti en az üç kez kaydedin. Kamera sonucu her zaman düzenlenebilir adaydır ve yanıt alanına ancak siz onaylarsanız aktarılır.</p>
+      <p class="camera-notice"><strong>Gizlilik ve ölçüm bilgisi:</strong> Yerel modda MediaPipe görüntüyü cihazda işler ve yalnızca sayısal hareket noktaları saklanır. Bulut destekli modda kısa klip ancak ayrı izninizle gönderilir. MediaPipe çalışma ortamının kendi ölçüm koşulları geçerlidir.</p>
       <div class="camera-layout">
         <div>
           <video class="camera-preview" id="camera-preview" playsinline muted hidden aria-label="İşaret tanıma kamera görüntüsü"></video>
-          <p class="inline-status" id="camera-status" role="status" aria-live="polite">Cümle modeli ve lisanslı yerel çalışma zamanı henüz dağıtım paketinde yok. Kamera açılmaz.</p>
+          <p class="inline-status" id="camera-status" role="status" aria-live="polite">Yerel kamera çalışma zamanı hazırlanıyor…</p>
           <div class="button-row camera-actions">
-            <button class="button secondary" id="camera-model-download" type="button" disabled>Modeli indir</button>
+            <button class="button secondary" id="camera-model-download" type="button" disabled>İsteğe bağlı cümle modelini indir</button>
             <button class="button primary" id="camera-start" type="button" disabled>Kamerayı aç</button>
             <button class="button lime" id="camera-finish" type="button" disabled>İşareti bitir</button>
             <button class="button secondary" id="camera-stop" type="button" disabled>Durdur</button>
@@ -149,6 +149,7 @@
         </div>
         <div class="camera-candidate" aria-labelledby="camera-candidate-title">
           <h3 id="camera-candidate-title">Türkçe aday — onayınız bekleniyor</h3>
+          <p class="candidate-source" id="camera-candidate-source" aria-live="polite">Henüz aday yok.</p>
           <label class="field-label" for="camera-candidate-text">Gerekirse düzeltin</label>
           <textarea id="camera-candidate-text" rows="3" maxlength="800" disabled placeholder="Onaylı bir eşleşme bulunursa aday burada görünür."></textarea>
           <div class="button-row">
@@ -188,7 +189,12 @@
           <div class="button-row translation-actions">
             <button class="button lime" id="play-tid" type="button" disabled hidden>İşaretleri oynat</button>
             <button class="button secondary" id="stop-tid" type="button" hidden>Durdur</button>
-            <button class="button secondary" id="retry-tid" type="button" hidden>Yeniden dene</button>
+          <button class="button secondary" id="retry-tid" type="button" hidden>Yeniden dene</button>
+            <label class="playback-control" for="playback-speed">Hız
+              <select id="playback-speed"><option value="0.75">0,75×</option><option value="1" selected>1×</option><option value="1.25">1,25×</option><option value="1.5">1,5×</option></select>
+            </label>
+            <button class="button secondary" id="repeat-tid" type="button" disabled>Tekrarla</button>
+            <button class="button secondary" id="step-tid" type="button" disabled>Adım adım</button>
           </div>
           <p class="translation-progress" id="tid-progress" aria-live="polite"></p>
         </div>
@@ -211,8 +217,8 @@
     <section class="limits" aria-labelledby="limits-title">
       <div><p class="eyebrow">Bu sürüm ne yapmaz?</p><h2 id="limits-title">Sınırları açıkça biliyoruz.</h2></div>
       <ul>
-        <li><strong>Kamera kapalı.</strong><span>Dağıtımda doğrulanmış cümle modeli ve lisanslı yerel çalışma zamanı bulunmadığından TİD→Türkçe tanıma başlatılamaz.</span></li>
-        <li><strong>Tam çeviri değil.</strong><span>Kayıtlı tekil işaretler, Türkçe sözcük sırasıyla gösterilir.</span></li>
+        <li><strong>Kişisel kamera tanıma.</strong><span>Öğretilen işaretleri bu cihazdaki örneklerle eşleştirir; bilinmeyen bütün TİD konuşmalarını otomatik çözmez.</span></li>
+        <li><strong>Kaynaklar ayrı gösterilir.</strong><span>Sözlük dizimi, harf kartı ve yapay zekâ adayları uzman onaylı doğal TİD değildir.</span></li>
         <li><strong>Acil durum aracı değil.</strong><span>Medikal veya hayati kararlar için tek iletişim kanalı olarak kullanılmamalıdır.</span></li>
       </ul>
     </section>
@@ -220,7 +226,7 @@
 
   <footer>
     <div class="brand footer-brand"><span class="brand-mark" aria-hidden="true">TİD</span><span><strong>TİD Köprü</strong><small>İletişimi kolaylaştıran açık prototip</small></span></div>
-    <p>Hesap yok · Kamera modeli bu sürümde kapalı · TİD içeriği uzman onayına bağlı</p>
+    <p>Hesap yok · Kişisel kamera tanıma cihazda çalışır · TİD içeriği uzman onayına bağlı</p>
     <p>İşaret pozları: SignBridge, MIT (<a href="./SIGNBRIDGE-LICENSE.txt">lisans metni</a>). Karakter modeli lisansı doğrulanmadığı için yayına dahil edilmemiştir (<a href="./ASSET-NOTICE.txt">varlık bildirimi</a>).</p>
   </footer>
 

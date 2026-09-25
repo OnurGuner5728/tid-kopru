@@ -8,6 +8,38 @@ const MIN_FRAME_INTERVAL_MS = 1000 / 15;
 
 function codedError(code) { const error = new Error(code); error.code = code; return error; }
 
+export async function verifyRuntimeManifestFiles(manifest, {
+  baseUrl = globalThis.location?.href,
+  fetcher = globalThis.fetch?.bind(globalThis),
+  cryptoProvider = globalThis.crypto,
+  onProgress = () => {},
+} = {}) {
+  if (manifest?.schemaVersion !== 1 || !Array.isArray(manifest.files) || typeof fetcher !== 'function' || !cryptoProvider?.subtle) {
+    throw codedError('invalid_runtime_manifest');
+  }
+  const base = new URL('./', baseUrl);
+  for (let index = 0; index < manifest.files.length; index += 1) {
+    const file = manifest.files[index];
+    if (!file || typeof file.path !== 'string'
+        || !/^(?:assets\/runtime|vendor\/(?:mediapipe|onnxruntime))\/[A-Za-z0-9._/-]+$/u.test(file.path)
+        || file.path.split('/').some((part) => ['', '.', '..'].includes(part))
+        || !/^[0-9a-f]{64}$/u.test(file.sha256 ?? '') || typeof file.license !== 'string' || !Number.isInteger(file.bytes)) {
+      throw codedError('invalid_runtime_manifest');
+    }
+    const url = new URL(file.path, base);
+    if (url.origin !== base.origin || url.pathname !== `${base.pathname}${file.path}`) throw codedError('unsafe_runtime_path');
+    const response = await fetcher(url.href, { credentials: 'same-origin', cache: 'no-store' });
+    if (!response?.ok) throw codedError('runtime_asset_unavailable');
+    const bytes = await response.arrayBuffer();
+    if (bytes.byteLength !== file.bytes) throw codedError('runtime_hash_mismatch');
+    const digest = await cryptoProvider.subtle.digest('SHA-256', bytes);
+    const actual = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
+    if (actual !== file.sha256) throw codedError('runtime_hash_mismatch');
+    onProgress({ path: file.path, completed: index + 1, total: manifest.files.length, percent: Math.round(((index + 1) / manifest.files.length) * 100) });
+  }
+  return true;
+}
+
 function resolveVerifiedPaths(manifest, baseUrl) {
   if (manifest?.schemaVersion !== 1 || !Array.isArray(manifest.files)) throw codedError('invalid_runtime_manifest');
   const verified = new Set(manifest.files.map((file) => file?.path));

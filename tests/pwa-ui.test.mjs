@@ -28,7 +28,7 @@ test('avatar retry reuses one scene while Turkish translation requires explicit 
   assert.match(html, /id="confirm-turkish"[^>]*disabled/u);
   assert.match(html, /id="play-tid"[^>]*disabled[^>]*hidden/u);
   assert.match(app, /createTidOutputController/u);
-  assert.match(app, /translateTurkishToTid\(text, translationResources\)/u);
+  assert.match(app, /createTidDisplayPlan\(text, translationResources\)/u);
   assert.doesNotMatch(app, /matchText\(/u);
   assert.match(avatar, /if \(!this\.renderer\) this\.setupScene\(\)/u);
   assert.doesNotMatch(app, /elements\.(?:heardText|replyText)\.disabled\s*=\s*true/u);
@@ -86,4 +86,12 @@ test('privacy panel separates local hybrid cloud camera and microphone choices',
   assert.match(html, /id="cloud-consent"[^>]*type="checkbox"/u);
   assert.match(app, /createPrivacyModeController/u);
   assert.match(app, /initializePrivacyModes/u);
+});
+
+test('camera is available for personal on-device teaching without claiming universal translation', () => {
+  assert.match(html, /id="teaching-panel"/u);
+  assert.match(html, /id="camera-start"[^>]*>Kamerayı aç/u);
+  assert.doesNotMatch(html, /<strong>Kamera kapalı\.<\/strong>/u);
+  assert.match(html, /Kişisel işaret tanıma/u);
+  assert.match(app, /createPersonalTrainer/u);
 });
