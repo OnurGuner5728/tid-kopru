@@ -21,6 +21,7 @@ Aşağıdaki liste `public/` altında bulunan her dağıtım dosyasını içerir
 - [ ] `public/vendor/three/three.module.js` — kaynak başlığında Three.js Authors, `SPDX-License-Identifier: MIT` ve telif bildirimi bulunur.
 - [ ] `public/vendor/three/addons/loaders/GLTFLoader.js` — Three.js MIT lisans bildiriminin ve sürüm kaynağının dağıtım paketiyle korunduğunu doğrulayın.
 - [ ] `public/vendor/three/addons/controls/OrbitControls.js` — Three.js MIT lisans bildiriminin ve sürüm kaynağının dağıtım paketiyle korunduğunu doğrulayın.
+- [ ] `public/vendor/three/addons/utils/BufferGeometryUtils.js` — GLTFLoader'ın `three` bağımlılığını tamamlayan Three.js r162 yardımcı modülü; MIT kaynağını ve sürüm tutarlılığını doğrulayın.
 - [ ] Depo kökündeki `ASSET-NOTICE.txt` ve `SIGNBRIDGE-LICENSE.txt` kaynak paketinde saklanır; statik `public/` klasörünü yayımlarken gerekli üçüncü taraf bildirimlerinin dağıtım paketinde de bulunduğunu doğrulayın.
 
 ### Karakter varlığı yayın kapısı
@@ -55,6 +56,10 @@ Cihaz modeli, Android/Chrome sürümü, tarih ve sonuçları kayıt altına alı
 - [ ] Yükseltme: önceki sürüm önbelleğinden güncelleyin; uygulama açılır ve başka site önbellekleri etkilenmez.
 - [ ] Erişilebilirlik: TalkBack ile etiketler ve durum bildirimleri; klavye bağlıyken sıralı gezinme ve görünür odak; büyük metin ve en dar desteklenen ekran genişliği.
 - [ ] Uzun kullanım ve yön değiştirme: avatar görünümü taşmıyor, dokunma hedefleri kullanılabilir, azaltılmış hareket tercihi animasyon yükünü azaltıyor.
+
+## Yerel masaüstü tarayıcı denemesi
+
+**25 Eylül 2026, Windows'ta localhost:** Uygulama açıldı; servis çalışanı hazır durumuna geçti ve sözlükte 123 işaret yüklendi. Sunucu kayıtları uygulama kabuğunun servis çalışanı kurulumundan önce, avatar dosyalarının ise servis çalışanı kontrolü sağlandıktan sonra istendiğini gösterdi. Yerel sunucu kapatılıp aynı adres yenilendiğinde uygulama kabuğu ve avatar çevrimdışı açıldı; avatar görsel olarak görüntülendi. Bu sonuç Android kurulumu, TalkBack, mikrofon izni veya farklı cihazlarda çalışma doğrulaması değildir.
 
 ### Yayın kararı
 

@@ -50,3 +50,9 @@ test('speech permission failures remain visible after recognition ends', () => {
   assert.match(app, /recognition\.addEventListener\('end', \(\) => setListeningState\(false, speechErrorMessage \|\| 'Hazır'\)\)/u);
   assert.match(app, /speechErrorMessage = messages\[event\.error\] \?\? 'Konuşma tanınamadı\.'/u);
 });
+
+test('first avatar fetch waits for service-worker control so its download can be cached', () => {
+  assert.match(app, /function waitForServiceWorkerControl\(/u);
+  assert.match(app, /navigator\.serviceWorker\.register\('\.\/service-worker\.js'\)[\s\S]*?finally\(loadAvatar\)/u);
+  assert.doesNotMatch(app, /initializeTextToSpeech\(\);\s*loadAvatar\(\);/u);
+});

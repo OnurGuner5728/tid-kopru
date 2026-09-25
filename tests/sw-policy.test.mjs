@@ -86,7 +86,7 @@ test('app shell excludes large avatar downloads and includes its runtime depende
     './', './index.html', './styles.css', './app.mjs', './avatar.mjs', './matcher.mjs',
     './sw-policy.js', './manifest.webmanifest', './icons/icon.svg', './icons/maskable.svg',
     './vendor/three/three.module.js', './vendor/three/addons/loaders/GLTFLoader.js',
-    './vendor/three/addons/controls/OrbitControls.js'
+    './vendor/three/addons/controls/OrbitControls.js', './vendor/three/addons/utils/BufferGeometryUtils.js'
   ]) {
     assert.ok(assets.includes(asset), `missing app-shell asset: ${asset}`);
   }

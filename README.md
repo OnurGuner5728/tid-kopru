@@ -6,13 +6,13 @@ Yüz yüze iletişimi destekleyen, ücretsiz ve hesapsız bir web uygulaması. B
 
 ## Bilgisayarda açma
 
-Node.js veya ek paket kurmadan `public/` klasörünü yerel bir web sunucusuyla açabilirsiniz. Proje klasöründe şu komutu çalıştırın:
+Ek paket kurmadan projeyle gelen yerel sunucuyu kullanın. Sunucu JavaScript modüllerine doğru MIME türünü verir ve yalnızca bu bilgisayarda dinler. Proje klasöründe şu komutu çalıştırın:
 
 ```powershell
-python -m http.server 8000 --directory public
+python tools/serve.py
 ```
 
-Ardından aynı bilgisayarda [http://localhost:8000](http://localhost:8000) adresini açın. Sunucuyu kapatmak için komut penceresinde `Ctrl+C` kullanın.
+Ardından aynı bilgisayarda [http://localhost:8000](http://localhost:8000) adresini açın. Başka bir port seçmek için `python tools/serve.py --port 8111` komutunu kullanın. Sunucuyu kapatmak için komut penceresinde `Ctrl+C` kullanın.
 
 Uzak Android telefondan kurulum, servis çalışanı ve mikrofon izni için güvenli bağlantı gerekir: yayın adresi HTTPS olmalıdır. `localhost` yalnızca aynı cihazdaki yerel deneme adresidir. Bu proje henüz belirli bir barındırma sağlayıcısına yayımlanmamıştır.
 
@@ -49,6 +49,7 @@ Elle yazılan metin ve avatar animasyonu uygulama kodunda cihazda işlenir; uygu
 ```powershell
 npm test
 npm run check
+python -m unittest discover -s tests -p test_dev_server.py
 ```
 
 Yayın adımlarını, lisans kapılarını ve cihaz kontrollerini [`docs/manual-android-checklist.md`](docs/manual-android-checklist.md) üzerinden takip edin. Haklar ve fiziksel cihaz doğrulaması tamamlanmadan genel kullanıma açmayın.

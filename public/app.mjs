@@ -287,24 +287,50 @@ function setPwaStatus(message) {
   renderPwaStatus();
 }
 
+function waitForServiceWorkerControl(timeoutMs = 5000) {
+  if (navigator.serviceWorker.controller) return Promise.resolve(true);
+
+  return new Promise((resolve) => {
+    let timeoutId;
+    const finish = (controlled) => {
+      window.clearTimeout(timeoutId);
+      navigator.serviceWorker.removeEventListener('controllerchange', onControllerChange);
+      resolve(controlled);
+    };
+    const onControllerChange = () => {
+      if (navigator.serviceWorker.controller) finish(true);
+    };
+
+    navigator.serviceWorker.addEventListener('controllerchange', onControllerChange);
+    if (navigator.serviceWorker.controller) {
+      finish(true);
+      return;
+    }
+    timeoutId = window.setTimeout(() => finish(Boolean(navigator.serviceWorker.controller)), timeoutMs);
+  });
+}
+
 function initializePwa() {
   updateNetworkStatus();
   window.addEventListener('online', updateNetworkStatus);
   window.addEventListener('offline', updateNetworkStatus);
   if (!('serviceWorker' in navigator)) {
     setPwaStatus('Bu tarayıcı çevrimdışı uygulama kurulumunu desteklemiyor. Metinle kullanım devam eder.');
+    loadAvatar();
     return;
   }
 
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./service-worker.js')
-      .then(() => {
-        setPwaStatus('Uygulama çevrimdışı açılış için hazır. Kurulum HTTPS bağlantısında yapılır; ilk çevrimdışı kullanım için avatarı bir kez indirip açın.');
-      })
-      .catch(() => {
-        setPwaStatus('Çevrimdışı açılış ayarı yapılamadı. Kurulum için HTTPS gerekir; metinle kullanım devam eder.');
-      });
-  });
+  navigator.serviceWorker.register('./service-worker.js')
+    .then(async () => {
+      const controlled = await waitForServiceWorkerControl();
+      setPwaStatus(controlled
+        ? 'Uygulama çevrimdışı açılış için hazır. Kurulum HTTPS bağlantısında yapılır; ilk çevrimdışı kullanım için avatarı bir kez indirip açın.'
+        : 'Çevrimdışı önbellek kurulumu zaman aldı. Avatar yine yüklenmeyi deneyecek; çevrimdışı kullanım için sayfayı yenileyin.');
+    })
+    .catch(() => {
+      setPwaStatus('Çevrimdışı açılış ayarı yapılamadı. Kurulum için HTTPS gerekir; metinle kullanım devam eder.');
+    })
+    .finally(loadAvatar);
 }
 
 elements.showSigns.disabled = true;
@@ -318,7 +344,6 @@ initializePwa();
 initializeSpeechRecognition();
 initializeTextActions();
 initializeTextToSpeech();
-loadAvatar();
 updateCharacterCount();
 
 
