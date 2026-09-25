@@ -1,69 +1,68 @@
 # Yayın ve Android cihaz kontrol listesi
 
-**Durum:** Henüz tamamlanmadı. Karakter modelinin yeniden dağıtım hakkı ve fiziksel Android doğrulaması açık yayın kapılarıdır. Bir kutucuğu ancak ölçülen sonucu kaydettikten sonra işaretleyin.
+**Durum: YAYIN ENGELLENMİŞTİR.** TİD uzman değerlendirmesi, lisanslı cümle medyası, `rain.glb` model hakkı ve fiziksel Android denemesi açık yayın kapılarıdır. Bir kutuyu yalnızca ölçülen sonuç, cihaz ve tarih kaydedildikten sonra işaretleyin. Güncel içerik sayımları [Türkçe→TİD değerlendirme raporundadır](tid-text-to-sign-evaluation.md).
 
 ## Dağıtım dosyaları ve lisanslar
 
-Aşağıdaki liste `public/` altında bulunan her dağıtım dosyasını içerir. Yayın paketindeki dosya adlarını, içeriklerini ve kaynak bildirimlerini karşılaştırın.
+Yayın öncesi aşağıdaki her dosyanın kaynak, sürüm ve lisansını paketle karşılaştırın.
 
-- [ ] `public/app.mjs` — metin, konuşma ve PWA akışları; tarayıcı konuşma tanımasının internet kullanabileceği açıklaması.
-- [ ] `public/avatar.mjs` — Three.js avatar yükleme ve animasyonu.
-- [ ] `public/assets/avatar/rain.glb` — karakter modeli; yeniden dağıtım hakkı şu anda doğrulanmamış durumda.
-- [ ] `public/assets/avatar/saved-poses.json` — SignBridge kaynaklı poz verisi; `SIGNBRIDGE-LICENSE.txt` MIT bildirimini paketle birlikte koruyun.
-- [ ] `public/icons/icon.svg` — manifestteki standart uygulama simgesi.
-- [ ] `public/icons/maskable.svg` — manifestteki maskelenebilir simge; gerçek Android başlatıcısında denetleyin.
-- [ ] `public/index.html` — Türkçe dil tanımı, uygulama metinleri, durum etiketleri ve gizlilik açıklaması.
-- [ ] `public/manifest.webmanifest` — `start_url`, `scope`, standalone gösterim, dil ve iki simge yolu.
-- [ ] `public/matcher.mjs` — birebir sözcük eşleştirme; TİD cümle çevirisi iddiası olmadığını doğrulayın.
-- [ ] `public/service-worker.js` — klasik worker URL'si, `sw-policy.js` yüklemesi, sürüm önbelleği ve kapsam.
-- [ ] `public/styles.css` — küçük ekran, görünür klavye odağı, 48 piksel dokunma hedefi ve azaltılmış hareket kuralı.
-- [ ] `public/sw-policy.js` — çevrimdışı sayfa dönüşü, indirilmeyen varlık mesajı ve yalnızca eski TİD önbelleklerini silme politikası.
-- [ ] `public/vendor/three/three.module.js` — kaynak başlığında Three.js Authors, `SPDX-License-Identifier: MIT` ve telif bildirimi bulunur.
-- [ ] `public/vendor/three/addons/loaders/GLTFLoader.js` — Three.js MIT lisans bildiriminin ve sürüm kaynağının dağıtım paketiyle korunduğunu doğrulayın.
-- [ ] `public/vendor/three/addons/controls/OrbitControls.js` — Three.js MIT lisans bildiriminin ve sürüm kaynağının dağıtım paketiyle korunduğunu doğrulayın.
-- [ ] `public/vendor/three/addons/utils/BufferGeometryUtils.js` — GLTFLoader'ın `three` bağımlılığını tamamlayan Three.js r162 yardımcı modülü; MIT kaynağını ve sürüm tutarlılığını doğrulayın.
-- [ ] Depo kökündeki `ASSET-NOTICE.txt` ve `SIGNBRIDGE-LICENSE.txt` kaynak paketinde saklanır; statik `public/` klasörünü yayımlarken gerekli üçüncü taraf bildirimlerinin dağıtım paketinde de bulunduğunu doğrulayın.
+- [ ] `public/app.mjs` — onaylı Türkçe→TİD arayüzü ve mikrofonun sağlayıcıya bağlı olabileceği uyarısı.
+- [ ] `public/avatar.mjs` — avatar yükleme ve yalnızca doğrulanmış içerik için poz oynatma.
+- [ ] `public/assets/avatar/rain.glb` — karakter modeli; yeniden dağıtım izni şu anda doğrulanmamış.
+- [ ] `public/assets/avatar/saved-poses.json` — SignBridge kaynaklı poz verisi; `SIGNBRIDGE-LICENSE.txt` MIT bildirimiyle birlikte.
+- [ ] `public/assets/tid/content-manifest.json` — içerik sürümü, reviewed-content özeti ve medya hak/karmaları.
+- [ ] `public/assets/tid/reviewed-content.json` — gerçek TİD incelemesi ve karar bilgisi bulunan cümle kayıtları; şu an boş.
+- [ ] `public/assets/tid/morphology-rules.json` — Türkçe çözümleme kuralları; tek başına TİD karşılığı değildir.
+- [ ] `public/avatar.mjs`, `public/tid-media-player.mjs`, `public/tid-output-ui.mjs`, `public/tid-transfer.mjs`, `public/turkish-morphology.mjs` — avatar, medya oynatma, arayüz, onaylı aktarım ve çözümleme modülleri.
+- [ ] `public/matcher.mjs` — eski birebir eşleştirici; genel TİD çevirisi iddiası için kullanılmıyor.
+- [ ] `public/index.html`, `public/styles.css`, `public/manifest.webmanifest` — Türkçe arayüz, durum metinleri, görünür odağı ve uygulama kurulumu. `manifest.webmanifest` simge yolları ve ikonları Android'de kontrol edilmelidir.
+- [ ] `public/service-worker.js`, `public/sw-policy.js` — uygulama kabuğu ve manifestteki, lisans/karması doğrulanan medya önbelleği.
+- [ ] `public/icons/icon.svg`, `public/icons/maskable.svg` — manifest simgeleri; Android başlatıcısında kırpılmayı denetleyin.
+- [ ] `public/vendor/three/three.module.js`, `public/vendor/three/addons/loaders/GLTFLoader.js`, `public/vendor/three/addons/controls/OrbitControls.js`, `public/vendor/three/addons/utils/BufferGeometryUtils.js` — Three.js sürüm ve MIT bildirimleriyle birlikte.
+- [ ] Depo kökündeki `ASSET-NOTICE.txt` ve `SIGNBRIDGE-LICENSE.txt` kaynak paketinde tutulur; statik dağıtımın gerekli lisans metinlerini de içerdiğini doğrulayın.
 
-### Karakter varlığı yayın kapısı
+### İçerik ve varlık yayını
 
-- [ ] `rain.glb` için hak sahibinden yeniden dağıtımı açıkça kapsayan yazılı izin veya lisans doğrulandı; kanıt ve kapsam kaydedildi.
-- [ ] Bu hak doğrulanmadıysa, halka açık veya ticari dağıtım **engellenir**. Önizleme, kişisel kullanım veya kaynak projenin MIT olması tek başına model hakkını kanıtlamaz.
-- [ ] İzinli bir yedek seçilirse, modelin iskeletindeki kemik adları `saved-poses.json` içindeki tüm poz anahtarlarıyla eşleşiyor; yükleme ve kayıtlı poz animasyonu görsel olarak doğrulandı.
-- [ ] İşaret kodları, poz verileri, karakter ve Three.js için kaynak/lisans bilgisi dağıtım paketinde korunuyor.
+- [ ] `pilot-content-0` şu anda 0 cümle, 0 üretken kalıp ve 0 TİD medya varlığı içerir. Bu sayı artarsa yeni bir içerik sürümü, bağlanan kaynak/inceleme ve toplu rapor oluşturun.
+- [ ] Her yeni karşılık iki bağımsız akıcı TİD değerlendiricisinden onay alır; anlaşmazlığı üçüncü hakem çözer. Sentetik test incelemeleri sayılmaz.
+- [ ] Her oynatılabilir video veya avatar animasyonu için kaynağı, lisans belgesi/izni, atıfı, yeniden dağıtım kapsamı, SHA-256, süre, gloss hizası ve non-manual zamanlaması denetlenir.
+- [ ] Türkçe→TİD held-out 300 cümle değerlendirmesinde uzlaştırma sonrası anlam kabulü en az %90 olmadan yayın yapılmaz. Alt küme, ret ve yanlış kabul sonuçlarını da kaydedin.
+- [ ] `rain.glb` yeniden dağıtım hakkı doğrulanmadıysa bu karakteri içeren kamuya açık dağıtım engellidir. Kaynak kodun veya poz dosyalarının MIT olması karakter izni kanıtı değildir.
+- [ ] Katılımcı kimliği, rıza formu, ham/özel video, landmark ve kimlik eşleme tablosu Git'e veya web önbelleğine konmaz.
 
-## PWA kabuğu, ikonlar ve gizlilik
+## PWA kabuğu, çevrimdışı kullanım ve gizlilik
 
-- [ ] `manifest.webmanifest` içindeki her ikon HTTPS yayın adresinde açılıyor; maskelenebilir ikon Android simgesinde kırpılmadan görünüyor.
-- [ ] Service worker `./service-worker.js` adresinden klasik worker olarak kuruluyor; kapsam manifestteki `./` ile tutarlı.
-- [ ] Uygulama kabuğu listesi HTML, CSS, modüller, manifest, simgeler ve üç vendored Three.js dosyasını içeriyor.
-- [ ] `rain.glb` ve `saved-poses.json` ilk kurulum listesinde değil; her ikisi de başarılı ilk indirmeden sonra önbelleğe alınıyor.
-- [ ] Çevrimdışı sayfa açılışı daha önce önbelleğe alınmış kabuğu gösteriyor; indirilmeyen bir varlık için anlaşılır hata ve yeniden deneme yolu var.
-- [ ] Sürüm yükseltmesi yalnızca eski `tid-kopru-v<number>` önbelleklerini siliyor; başka uygulamaların önbelleği kalıyor.
-- [ ] Ekrandaki gizlilik metni, yazı/avatarın cihazda işlendiğini ve konuşma tanımanın tarayıcı üzerinden uzak hizmet kullanabileceğini doğru anlatıyor.
-- [ ] Uygulamanın konuşma tanıma dışında ses, metin veya kamera verisini göndermediği doğrulandı; kamera tanıma mevcut özellikmiş gibi tanıtılmıyor.
+- [ ] Service worker `./service-worker.js` adresinden klasik worker olarak kurulur ve manifestteki `./` kapsamıyla tutarlıdır.
+- [ ] Uygulama kabuğu HTML, CSS, gereken modülleri, manifesti, simgeleri, küçük TİD içerik/biçimbilim JSON dosyalarını ve vendored Three.js dosyalarını içerir.
+- [ ] Büyük avatar modeli/poz dosyaları ile TİD video medyası ilk kurulum kabuğuna alınmaz. TİD medyası ancak mevcut içerik manifesti listelemiş, hak beyanı geçerli ve indirilen dosya karması doğruysa sürümlü önbelleğe girer.
+- [ ] Manifestte listelenmeyen TİD varlığı ve ham katılımcı/kamera yolu önbelleğe girmez. İndirme, karma veya kota hatası kullanıcıya hata olarak bildirilir ve tekrar deneme yolu vardır.
+- [ ] Eski uygulama kabuğu sürüm önbelleği silinir; başka site önbelleklerine dokunulmaz.
+- [ ] Elle yazılan metin ve yerel çeviri akışının cihaz dışına gönderilmediği; mikrofon konuşma tanımanın tarayıcı sağlayıcısına göre ağ kullanabileceği açıklanır.
+- [ ] Ürün arayüzünde kamera ile TİD→Türkçe özelliği sunulmaz. Ürün dışı araştırma araçları kamera çevirisi kanıtı değildir.
 
 ## Android Chrome'da elle doğrulama
 
-Cihaz modeli, Android/Chrome sürümü, tarih ve sonuçları kayıt altına alın. Başka tarayıcı veya cihazlara başarı genellemesi yapmayın.
+Cihaz modeli, Android/Chrome sürümü, tarih ve sonucu kaydedin. Bu liste şu an fiziksel cihazda çalıştırılmış değildir.
 
-- [ ] Temiz kurulum: HTTPS sayfasını Android Chrome'da açın; uygulama simgesi/manifest kurulumu ve ana ekrandan açılış çalışıyor.
-- [ ] İlk açılış: uygulama kabuğu açılıyor; avatar indirme ilerlemesi/başarısı görünüyor; sözlük ve kayıtlı poz animasyonu çalışıyor.
-- [ ] İndirme hatası: ağ kesilince metin girişleri ve cihaz seslendirmesi kullanılabiliyor; avatar hatası anlaşılır ve **Yeniden dene** düğmesi çalışıyor.
-- [ ] Çevrimdışı: uygulamayı çevrimiçi açıp avatarı yükledikten sonra uçak modunda ana ekrandan başlatın; kabuk, elle metin, cihaz seslendirmesi ve önceden indirilen avatarı sınayın.
-- [ ] İlk çevrimdışı kullanım: avatar henüz indirilmediyse uygulamanın bunu açıkça bildirdiğini doğrulayın; tam çevrimdışı konuşma tanıma iddiası olmadığını kontrol edin.
-- [ ] Mikrofon izni: reddedin; uyarı görünür kalıyor, elle yazma ve yanıtı seslendirme çalışıyor.
-- [ ] Mikrofon ve konuşma: izin verildiğinde konuşma başlatma/durdurma, hata mesajı ve elle düzeltme akışını deneyin; konuşma hizmetinin ağ davranışını cihaz/tarayıcı bağlamında kaydedin.
-- [ ] Yükseltme: önceki sürüm önbelleğinden güncelleyin; uygulama açılır ve başka site önbellekleri etkilenmez.
-- [ ] Erişilebilirlik: TalkBack ile etiketler ve durum bildirimleri; klavye bağlıyken sıralı gezinme ve görünür odak; büyük metin ve en dar desteklenen ekran genişliği.
-- [ ] Uzun kullanım ve yön değiştirme: avatar görünümü taşmıyor, dokunma hedefleri kullanılabilir, azaltılmış hareket tercihi animasyon yükünü azaltıyor.
+- [ ] Temiz HTTPS kurulumu: uygulama simgesi, manifest, ana ekrandan açılış ve servis çalışanı kontrolü.
+- [ ] Türkçe metin: `Sen iyisin` yazıp onaylayın. Mevcut boş içerik sürümünde sonuç **desteklenmiyor** olmalı; oynatma düğmesi görünmemeli. Bu örnek şu an TİD'e çevrilmiyor.
+- [ ] Gerçek `ready` sonucu yalnızca sonradan uzmanlarca incelenmiş bir örnek ve lisanslı varlık eklenirse denenebilir; gerçek örnek eklenmeden bu madde tamamlandı sayılmaz.
+- [ ] Ara metin, son transkript, mikrofonu durdurma ve son metni ayrıca onaylama sırasını deneyin. Tanıma sürerken onay/oynatma başlamamalı.
+- [ ] Mikrofon iznini reddedin ve tarayıcı ağı kullanılamazken elle metin girişi, onay, hata açıklaması ve metni düzenleme çalışıyor.
+- [ ] Onaylı medya eklendiğinde indirme, karma/erişim hatası, yeniden deneme, durdurma, çevrimdışı tekrar oynatma ve başka içerik sürümüne geçişi sınayın.
+- [ ] Uçak modunda önbelleğe alınmış uygulama kabuğunu ve daha önce indirilmiş lisanslı medyayı açın. Konuşma tanımanın çevrimdışı çalıştığını varsaymayın.
+- [ ] TalkBack durum bildirimleri, klavye gezinmesi, görünür odak, büyük metin, dar ekran ve azaltılmış hareket tercihini sınayın.
+- [ ] Yazı/metin/TİD medyasının NVIDIA veya başka bir üretken AI hizmetine gönderilmediğini ağ incelemesiyle doğrulayın.
 
-## Yerel masaüstü tarayıcı denemesi
+## Önceki masaüstü kontrolünün kapsamı
 
-**25 Eylül 2026, Windows'ta localhost:** Uygulama açıldı; servis çalışanı hazır durumuna geçti ve sözlükte 123 işaret yüklendi. Sunucu kayıtları uygulama kabuğunun servis çalışanı kurulumundan önce, avatar dosyalarının ise servis çalışanı kontrolü sağlandıktan sonra istendiğini gösterdi. Yerel sunucu kapatılıp aynı adres yenilendiğinde uygulama kabuğu ve avatar çevrimdışı açıldı; avatar görsel olarak görüntülendi. Bu sonuç Android kurulumu, TalkBack, mikrofon izni veya farklı cihazlarda çalışma doğrulaması değildir.
+25 Eylül 2026, Windows'ta localhost: önceki kullanıcı arayüzünde uygulama kabuğu ve avatar dosyalarının çevrimdışı açıldığı kaydedilmiştir. Bu sonuç Android kurulumu veya güncel onaylı Türkçe→TİD akışının doğrulaması değildir; yeni arayüz ve medya önbelleği için ayrı deneme gerekir.
 
-### Yayın kararı
+## Yayın kararı
 
-- [ ] Karakter modelinin yeniden dağıtım hakkı doğrulandı veya lisanslı uyumlu modelle değiştirildi.
-- [ ] Bu listedeki fiziksel Android kontrolleri ölçülerek tamamlandı.
-- [ ] Uygulama kapsamı, veri akışları, lisanslar ve bilinen sınırlar incelendi; TİD cümle çevirisi veya acil durum aracı iddiası yok.
-- [ ] Yalnızca yukarıdaki maddeler tamamlanırsa yayın sahibi HTTPS statik dağıtımı onayladı.
+- [ ] İki bağımsız TİD incelemesi ve gerektiğinde hakem sonucu kayda geçirildi.
+- [ ] 300 held-out cümlede en az %90 anlam kabulü sağlandı; kişi, olumsuzluk, soru, zaman, iyelik ve çekim alt sonuçları raporlandı.
+- [ ] Desteklenen tüm cümlelerin varlık hakları, içerik karmaları ve non-manual gösterimleri doğrulandı.
+- [ ] `rain.glb` model hakkı çözüldü veya izinli modelle değiştirildi.
+- [ ] Android Chrome, çevrimdışı ve erişilebilirlik denemeleri fiziksel cihazda geçti.
+- [ ] Yayın sahibi yalnızca yukarıdaki kanıtlardan sonra HTTPS statik dağıtımı onayladı.

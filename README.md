@@ -1,56 +1,53 @@
 # TİD Köprü
 
-Yüz yüze iletişimi destekleyen, ücretsiz ve hesapsız bir web uygulaması. Bu sürüm; elle yazılan Türkçe metni, tarayıcı destekliyorsa konuşmayı yazıya dönüştürmeyi, cihazın ses sentezini ve kayıtlı işaretleri avatarla göstermeyi bir araya getirir.
+Türkçe konuşan ve Türk İşaret Dili (TİD) kullanan kişilerin yüz yüze iletişimini desteklemek için geliştirilen teknik prototip. Metni yazabilir veya tarayıcı konuşma tanımasını kullanabilir, görünen son metni onaylayabilir ve cihazın Türkçe ses sentezinden yararlanabilirsiniz.
 
-> **Durum:** Teknik ilk sürüm. Android Chrome'da çevrimdışı kurulum ve erişilebilirlik kontrolleri henüz doğrulanmadı. `public/assets/avatar/rain.glb` dosyasının yeniden dağıtım hakkı belirsiz olduğu için uygulama halka açık dağıtıma hazır değildir.
+> **Yayın durumu: Engelli.** Uygulamanın Türkçe→TİD aktarım ve oynatıcı altyapısı vardır; fakat dağıtım paketinde TİD uzmanlarınca onaylanmış cümle veya lisansı doğrulanmış gösterim medyası yoktur. Şu anda desteklenen TİD cümle alanı **0 cümledir**. Desteklenmeyen her ifadede TİD işareti oynatılmaz. Android Chrome ve erişilebilirlik cihaz kontrolleri de henüz yapılmamıştır.
+
+Yazılım **acil durum aracı değildir**; tıbbi veya hayati iletişimde tek kanal olarak kullanmayın.
+
+## Bu prototip şu an ne yapıyor?
+
+- Türkçe metni düzenlenebilir bir alana alır. İsteğe bağlı mikrofon tanımasında ara ve son metin görünür; dinleme durduktan sonra kullanıcı son metni ayrıca onaylar.
+- Metni cihazda çalışan sınırlı Türkçe biçimbilim ve onaylı içerik denetiminden geçirir. Bilinmeyen veya belirsiz ifadeyi tahminle tamamlamaz.
+- Mevcut `pilot-content-0` içeriğinde **0 onaylı cümle, 0 üretken aktarım kalıbı ve 0 medya varlığı** vardır. Bu nedenle `Sen iyisin` dahil hiçbir cümle şu an TİD hareketine çevrilemez. `iyisin` çözümlemesinin testlerde ikinci tekil kişi bilgisini koruması, bu cümle için TİD karşılığının onaylandığı anlamına gelmez.
+- Yanıt metnini cihazın ses senteziyle seslendirebilir.
+- Kameradan TİD cümlelerini Türkçeye çevirme bu kullanıcı arayüzünde yoktur. Araştırma/kamera toplama araçları ürünün ters yönlü çeviri özelliği değildir.
+
+Hedeflenen olası ilk içerik alanı selamlaşma, kişiler/aile, temel ihtiyaçlar, gündelik etkinlikler, zaman/yer, tercih, basit rica ve tekrar isteme cümleleridir. Bunların hiçbiri iki bağımsız akıcı TİD değerlendiricisinin incelemesi ve uygun gösterim medyası olmadan desteklenmiş sayılmaz. Güncel sayımlar ve yayın kapısı [değerlendirme raporunda](docs/tid-text-to-sign-evaluation.md) tutulur.
 
 ## Bilgisayarda açma
 
-Ek paket kurmadan projeyle gelen yerel sunucuyu kullanın. Sunucu JavaScript modüllerine doğru MIME türünü verir ve yalnızca bu bilgisayarda dinler. Proje klasöründe şu komutu çalıştırın:
+Ek paket kurmadan projeyle gelen yerel sunucuyu kullanın. Sunucu JavaScript modüllerine doğru MIME türünü verir ve yalnızca bu bilgisayarda dinler. Proje klasöründe:
 
 ```powershell
 python tools/serve.py
 ```
 
-Ardından aynı bilgisayarda [http://localhost:8000](http://localhost:8000) adresini açın. Başka bir port seçmek için `python tools/serve.py --port 8111` komutunu kullanın. Sunucuyu kapatmak için komut penceresinde `Ctrl+C` kullanın.
+Sonra aynı bilgisayarda [http://localhost:8000](http://localhost:8000) adresini açın. Başka bir port için `python tools/serve.py --port 8111` kullanın; durdurmak için `Ctrl+C` basın.
 
-Uzak Android telefondan kurulum, servis çalışanı ve mikrofon izni için güvenli bağlantı gerekir: yayın adresi HTTPS olmalıdır. `localhost` yalnızca aynı cihazdaki yerel deneme adresidir. Bu proje henüz belirli bir barındırma sağlayıcısına yayımlanmamıştır.
+Uzak Android telefonda kurulum, servis çalışanı ve mikrofon izni için HTTPS gerekir. `localhost` yalnızca aynı cihazdaki yerel deneme adresidir. Depo belirli bir barındırma sağlayıcısına yayımlanmış değildir.
 
-## İlk avatar yüklemesi ve çevrimdışı kullanım
+## Konuşma tanıma ve gizlilik
 
-Avatarın iki dosyası birlikte yaklaşık **8,1 MB** boyutundadır: `rain.glb` 7.169.048 bayt, `saved-poses.json` 958.753 bayt. İlk denemeyi internet bağlıyken açın ve avatarın yüklenmesini bekleyin. Service worker bu dosyaları başarılı indirmeden sonra önbelleğe alır; büyük avatar dosyaları uygulama kabuğunun kurulumunu geciktirmez. İndirme başarısız olursa **Yeniden dene** düğmesini kullanabilirsiniz.
+Elle yazılan metin, biçimbilim çözümlemesi ve onaylı içerik araması tarayıcıda, cihazda çalışır. Uygulama metin, video, landmark veya kamera görüntüsünü bulut yapay zekâsına göndermez ve NVIDIA API anahtarı içermez.
 
-Önceden yüklenmiş uygulama kabuğu ve avatar çevrimdışı açılabilir. Avatar ilk kez indirilmediyse çevrimdışı kullanılamaz. Konuşmayı yazıya çevirme tarayıcının konuşma tanıma hizmetine bağlıdır; bu hizmet internet kullanabilir veya sesi cihaz dışına gönderebilir. Tamamen çevrimdışı konuşma tanıma bu sürümde yoktur. Uygulama bu davranış hakkında ekranda uyarı gösterir.
+Mikrofon yalnızca **Dinlemeyi başlat** düğmesine basılınca istenir. Konuşmayı yazıya çevirme tarayıcının konuşma tanıma sağlayıcısını kullanabilir; bu sağlayıcı internet bağlantısı ve sesin cihaz dışına gönderilmesini gerektirebilir. Sağlayıcının ağ ve saklama davranışı tarayıcıya/cihaza bağlıdır. Mikrofon izni reddedilse de elle yazma çalışır.
 
-## Android Chrome'da deneme
+## Çevrimdışı kullanım ve varlıklar
 
-1. HTTPS üzerinden açılan uygulamada sayfa tamamen yüklensin.
-2. Avatarın tamamlandığını ve sözlüğün hazır olduğunu bekleyin; bu ilk avatar indirmesidir.
-3. Chrome menüsünden **Uygulamayı yükle** veya **Ana ekrana ekle** seçeneğini kullanın.
-4. Ana ekrandaki uygulamayı açın; metin yazma, yanıtı seslendirme ve önceden indirilmiş bir işareti gösterme akışlarını deneyin.
-5. Uçak modunda yeniden açıp önbelleğe alınmış uygulama kabuğunu ve avatarı kontrol edin. Mikrofonla konuşmayı yazıya çevirmenin çevrimdışı çalışacağını varsaymayın.
+Uygulama kabuğu, küçük içerik dosyaları ve biçimbilim kuralları servis çalışanıyla önbelleğe alınır. Lisansı ve SHA-256 özeti manifestte kayıtlı TİD medyası yalnızca onaylı içerik listesinde bulunursa, dosya özeti doğrulandıktan sonra sürümlü önbelleğe alınır. Ham kamera veya katılımcı kayıtları bu akışa dahil edilmez. İlk çevrimdışı kullanım için gerekiyorsa uygulamayı çevrimiçiyken bir kez açın; mikrofon tanımasının çevrimdışı çalışacağını varsaymayın.
 
-Bu adımlar henüz fiziksel Android cihazda doğrulanmış sayılmaz. Yayın öncesi ayrıntılı kontrol listesi [`docs/manual-android-checklist.md`](docs/manual-android-checklist.md) dosyasındadır.
+Avatar kurulumu `rain.glb` (7.169.048 bayt) ve `saved-poses.json` (958.753 bayt) dosyalarını, toplam yaklaşık **8,1 MB** olarak indirir. Bu büyük dosyalar ilk uygulama kabuğu listesinde değildir; başarılı ilk yüklemeden sonra önbelleğe alınır. Karakter modeli hakkı doğrulanmadığı için kamuya açık dağıtım hâlâ engellidir.
 
-## Gizlilik ve veri akışı
-
-Elle yazılan metin ve avatar animasyonu uygulama kodunda cihazda işlenir; uygulama hesabı veya kendi uygulama sunucusu yoktur. Mikrofon yalnızca kullanıcı **Dinlemeyi başlat** düğmesine bastığında istenir. Tarayıcının konuşma tanıma özelliği uzak bir hizmet kullanabilir; bu nedenle ağ ve veri işleme ayrıntısı tarayıcı/cihaz sağlayıcısına bağlıdır. Kullanım sırasında metin geçmişi uygulama tarafından kaydedilmez. İşletim sistemi veya tarayıcı düzeyindeki saklama/telemetri davranışı bu uygulamanın denetiminde değildir.
-
-## Kapsam ve bilinen sınırlar
-
-- Avatar, yalnızca sözlükte birebir bulunan tekil sözcükleri Türkçe sözcük sırasıyla oynatır; **doğal TİD cümle çevirisi değildir**.
-- Kameradan işaret tanıma ve işareti otomatik olarak Türkçe yazıya çevirme bu sürümde yoktur.
-- Konuşma tanımanın doğruluğu, kullanılabilirliği ve internet gereksinimi tarayıcıya, cihaza ve ortama göre değişebilir; geniş cihaz kapsamı henüz ölçülmemiştir.
-- Yazılım **acil durum aracı değildir**; medikal veya hayati kararlar için tek iletişim kanalı olarak kullanılmamalıdır.
-- Avatar poz verileri SignBridge kaynaklıdır. Karakter modeli `rain.glb` için yeniden dağıtım izni doğrulanmamıştır. Bkz. [`ASSET-NOTICE.txt`](ASSET-NOTICE.txt) ve yayın kontrol listesi.
+Mevcut `rain.glb` karakter modelinin yeniden dağıtım hakkı doğrulanmamıştır. Bu nedenle kamuya açık dağıtım engellidir; kaynak poz verileri de TİD cümle çevirisi veya insan tarafından doğrulanmış hareket sayılmaz. Hak durumu [`ASSET-NOTICE.txt`](ASSET-NOTICE.txt) ve [Android/yayın kontrol listesinde](docs/manual-android-checklist.md) izlenir.
 
 ## Geliştirme kontrolleri
 
 ```powershell
 npm test
 npm run check
-python -m unittest discover -s tests -p test_dev_server.py
+python -m unittest discover -s tests -v
 ```
 
-Yayın adımlarını, lisans kapılarını ve cihaz kontrollerini [`docs/manual-android-checklist.md`](docs/manual-android-checklist.md) üzerinden takip edin. Haklar ve fiziksel cihaz doğrulaması tamamlanmadan genel kullanıma açmayın.
-
+Otomatik testlerdeki sentetik onaylar yalnızca yazılım davranışını sınar; TİD uzman incelemesi, insan değerlendirmesi veya gerçek cihaz denemesi yerine geçmez. Ürünü acil, tıbbi veya hayati iletişimde tek kanal olarak kullanmayın.
