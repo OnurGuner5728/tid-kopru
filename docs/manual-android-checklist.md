@@ -10,10 +10,12 @@ Yayın öncesi aşağıdaki her dosyanın kaynak, sürüm ve lisansını paketle
 - [ ] `public/avatar.mjs` — avatar yükleme ve yalnızca doğrulanmış içerik için poz oynatma.
 - [ ] `public/assets/avatar/rain.glb` — karakter modeli; yeniden dağıtım izni şu anda doğrulanmamış.
 - [ ] `public/assets/avatar/saved-poses.json` — SignBridge kaynaklı poz verisi; `SIGNBRIDGE-LICENSE.txt` MIT bildirimiyle birlikte.
-- [ ] `public/assets/tid/content-manifest.json` — içerik sürümü, reviewed-content özeti ve medya hak/karmaları.
+- [ ] `public/assets/tid/content-manifest.json` — içerik sürümü, reviewed-content ve gloss→Türkçe özetleri ve medya hak/karmaları.
+- [ ] `public/assets/tid/gloss-to-turkish.json`, `public/assets/tid/sentence-model-manifest.json` — hash-bağlı ters yön içeriği ve model durumu; ikisi de şu an cümle eşleşmesi/model dosyası içermez.
 - [ ] `public/assets/tid/reviewed-content.json` — gerçek TİD incelemesi ve karar bilgisi bulunan cümle kayıtları; şu an boş.
 - [ ] `public/assets/tid/morphology-rules.json` — Türkçe çözümleme kuralları; tek başına TİD karşılığı değildir.
 - [ ] `public/avatar.mjs`, `public/tid-media-player.mjs`, `public/tid-output-ui.mjs`, `public/tid-transfer.mjs`, `public/turkish-morphology.mjs` — avatar, medya oynatma, arayüz, onaylı aktarım ve çözümleme modülleri.
+- [ ] `public/tid-to-turkish.mjs`, `public/sign-recognition.mjs`, `public/sign-recognition-worker.js`, `public/onnx-runtime-loader.mjs` — onaylı ters yön eşleştirme, kontrollü kamera istemcisi ve doğrulanmış yerel model yükleyicisi.
 - [ ] `public/matcher.mjs` — eski birebir eşleştirici; genel TİD çevirisi iddiası için kullanılmıyor.
 - [ ] `public/index.html`, `public/styles.css`, `public/manifest.webmanifest` — Türkçe arayüz, durum metinleri, görünür odağı ve uygulama kurulumu. `manifest.webmanifest` simge yolları ve ikonları Android'de kontrol edilmelidir.
 - [ ] `public/service-worker.js`, `public/sw-policy.js` — uygulama kabuğu ve manifestteki, lisans/karması doğrulanan medya önbelleği.
@@ -33,12 +35,15 @@ Yayın öncesi aşağıdaki her dosyanın kaynak, sürüm ve lisansını paketle
 ## PWA kabuğu, çevrimdışı kullanım ve gizlilik
 
 - [ ] Service worker `./service-worker.js` adresinden klasik worker olarak kurulur ve manifestteki `./` kapsamıyla tutarlıdır.
-- [ ] Uygulama kabuğu HTML, CSS, gereken modülleri, manifesti, simgeleri, küçük TİD içerik/biçimbilim JSON dosyalarını ve vendored Three.js dosyalarını içerir.
+- [ ] Uygulama kabuğu HTML, CSS, gereken modülleri, manifesti, simgeleri, küçük TİD içerik/biçimbilim JSON dosyalarını ve vendored Three.js dosyalarını içerir. Cümle modeli/ONNX runtime açık kullanıcı indirmesi ve hash doğrulaması olmadan kabuk önbelleğine alınmaz.
+- [ ] Yalnızca hash doğrulanmış kamera model/runtime dosyaları ayrı `tid-camera-model-<sürüm>` önbelleğine yazılır; eski sürüm ancak yeni sürüm kurulunca silinir. Kare, landmark ve araştırma kaydı önbelleğe alınmaz.
 - [ ] Büyük avatar modeli/poz dosyaları ile TİD video medyası ilk kurulum kabuğuna alınmaz. TİD medyası ancak mevcut içerik manifesti listelemiş, hak beyanı geçerli ve indirilen dosya karması doğruysa sürümlü önbelleğe girer.
 - [ ] Manifestte listelenmeyen TİD varlığı ve ham katılımcı/kamera yolu önbelleğe girmez. İndirme, karma veya kota hatası kullanıcıya hata olarak bildirilir ve tekrar deneme yolu vardır.
 - [ ] Eski uygulama kabuğu sürüm önbelleği silinir; başka site önbelleklerine dokunulmaz.
 - [ ] Elle yazılan metin ve yerel çeviri akışının cihaz dışına gönderilmediği; mikrofon konuşma tanımanın tarayıcı sağlayıcısına göre ağ kullanabileceği açıklanır.
-- [ ] Ürün arayüzünde kamera ile TİD→Türkçe özelliği sunulmaz. Ürün dışı araştırma araçları kamera çevirisi kanıtı değildir.
+- [ ] Paketli `sentence-model-manifest.json` `available: false` ise model indirme ve kamera düğmeleri kapalıdır; sayfa yükleme yolu `getUserMedia` çağırmaz.
+- [ ] Model ileride eklense bile kullanıcı önce görünür MediaPipe telemetri açıklamasını görür; ancak açık kamera eylemi izin ister. Kamera sonucu yalnızca Türkçe aday gösterir, `Yanıt alanına aktar` onayı olmadan yanıt metni ve ses değişmez.
+- [ ] Araştırma/kamera toplama araçları ürünün ters yönlü çeviri özelliği değildir. Gerçek kamera uçtan uca denemesi model, veri ve uzman kapıları kapanana kadar yapılamaz.
 
 ## Android Chrome'da elle doğrulama
 
@@ -46,13 +51,14 @@ Cihaz modeli, Android/Chrome sürümü, tarih ve sonucu kaydedin. Bu liste şu a
 
 - [ ] Temiz HTTPS kurulumu: uygulama simgesi, manifest, ana ekrandan açılış ve servis çalışanı kontrolü.
 - [ ] Türkçe metin: `Sen iyisin` yazıp onaylayın. Mevcut boş içerik sürümünde sonuç **desteklenmiyor** olmalı; oynatma düğmesi görünmemeli. Bu örnek şu an TİD'e çevrilmiyor.
+- [ ] Kamera kartında model indirme/kamera düğmeleri devre dışı olmalı; sayfa açılışında kamera izni penceresi görünmemeli. Bu sürümde gerçek kamera denemesi yapılamaz.
 - [ ] Gerçek `ready` sonucu yalnızca sonradan uzmanlarca incelenmiş bir örnek ve lisanslı varlık eklenirse denenebilir; gerçek örnek eklenmeden bu madde tamamlandı sayılmaz.
 - [ ] Ara metin, son transkript, mikrofonu durdurma ve son metni ayrıca onaylama sırasını deneyin. Tanıma sürerken onay/oynatma başlamamalı.
 - [ ] Mikrofon iznini reddedin ve tarayıcı ağı kullanılamazken elle metin girişi, onay, hata açıklaması ve metni düzenleme çalışıyor.
 - [ ] Onaylı medya eklendiğinde indirme, karma/erişim hatası, yeniden deneme, durdurma, çevrimdışı tekrar oynatma ve başka içerik sürümüne geçişi sınayın.
 - [ ] Uçak modunda önbelleğe alınmış uygulama kabuğunu ve daha önce indirilmiş lisanslı medyayı açın. Konuşma tanımanın çevrimdışı çalıştığını varsaymayın.
 - [ ] TalkBack durum bildirimleri, klavye gezinmesi, görünür odak, büyük metin, dar ekran ve azaltılmış hareket tercihini sınayın.
-- [ ] Yazı/metin/TİD medyasının NVIDIA veya başka bir üretken AI hizmetine gönderilmediğini ağ incelemesiyle doğrulayın.
+- [ ] Yazı/metin/TİD medyasının NVIDIA veya başka bir üretken AI hizmetine gönderilmediğini ağ incelemesiyle doğrulayın. Kamera özelliği açılacak sürümde MediaPipe ölçüm/ortam verisi için ayrıca ağ incelemesi yapın.
 
 ## Önceki masaüstü kontrolünün kapsamı
 
