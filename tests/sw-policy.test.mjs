@@ -1,11 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
+import { webcrypto } from 'node:crypto';
 import vm from 'node:vm';
 
 const request = (url, mode = 'cors') => ({ method: 'GET', url, mode });
 const source = await readFile(new URL('../public/sw-policy.js', import.meta.url), 'utf8');
-const context = { URL, Response };
+const context = { URL, Response, crypto: webcrypto };
 context.globalThis = context;
 vm.runInNewContext(source, context);
 const { getOfflineAwareResponse, shouldDeleteCache } = context.TidKopruCachePolicy;
@@ -68,9 +69,65 @@ test('offline asset miss returns a visible service-unavailable response', async 
 });
 
 test('only old app caches are deleted during activation', () => {
-  assert.equal(shouldDeleteCache('tid-kopru-v1', 'tid-kopru-v2'), true);
-  assert.equal(shouldDeleteCache('tid-kopru-v2', 'tid-kopru-v2'), false);
+  assert.equal(shouldDeleteCache('tid-kopru-v1', 'tid-kopru-v3'), true);
+  assert.equal(shouldDeleteCache('tid-kopru-v3', 'tid-kopru-v3'), false);
   assert.equal(shouldDeleteCache('unrelated-site-cache', 'tid-kopru-v2'), false);
+});
+
+test('only licensed manifest-listed TID assets are cached after their bytes match the approved hash', async () => {
+  const bytes = new TextEncoder().encode('approved media');
+  const { createHash } = await import('node:crypto');
+  const sha256 = createHash('sha256').update(bytes).digest('hex');
+  const manifest = {
+    schemaVersion: 1,
+    contentVersion: 'release-7',
+    mediaAssets: {
+      clip: { path: '/assets/tid/clip.webm', licenseId: 'TEST-ONLY', redistributionAllowed: true, sha256 },
+      restricted: { path: '/assets/tid/restricted.webm', licenseId: 'NO-REDISTRIBUTION', redistributionAllowed: false, sha256 },
+    },
+  };
+  let fetched = 0;
+  let openedCache;
+  const mediaCache = { match: async () => undefined, put: async () => {} };
+  const response = await context.TidKopruCachePolicy.getReviewedMediaResponse({
+    request: request('https://tid.test/assets/tid/clip.webm'), origin: 'https://tid.test', manifest,
+    cacheStorage: { open: async (name) => { openedCache = name; return mediaCache; } },
+    fetcher: async () => { fetched += 1; return new Response(bytes, { headers: { 'Content-Type': 'video/webm' } }); },
+  });
+  assert.equal(await response.text(), 'approved media');
+  assert.equal(fetched, 1);
+  assert.equal(openedCache, 'tid-kopru-tid-release-7');
+
+  const denied = await context.TidKopruCachePolicy.getReviewedMediaResponse({
+    request: request('https://tid.test/assets/tid/restricted.webm'), origin: 'https://tid.test', manifest,
+    cacheStorage: { open: async () => mediaCache }, fetcher: async () => { throw new Error('must not fetch'); },
+  });
+  assert.equal(denied.status, 404);
+  const rawParticipant = await context.TidKopruCachePolicy.getReviewedMediaResponse({
+    request: request('https://tid.test/assets/tid/raw-camera/participant-1.webm'), origin: 'https://tid.test', manifest,
+    cacheStorage: { open: async () => mediaCache }, fetcher: async () => { throw new Error('must not fetch'); },
+  });
+  assert.equal(rawParticipant.status, 404);
+});
+
+test('manifest-listed asset hash mismatch retries only within the configured bound and is never cached', async () => {
+  const { createHash } = await import('node:crypto');
+  const requestedBytes = new TextEncoder().encode('expected');
+  const actualBytes = new TextEncoder().encode('tampered');
+  const sha256 = createHash('sha256').update(requestedBytes).digest('hex');
+  let fetched = 0;
+  let cached = 0;
+  const response = await context.TidKopruCachePolicy.getReviewedMediaResponse({
+    request: request('https://tid.test/assets/tid/clip.mp4'), origin: 'https://tid.test',
+    manifest: { schemaVersion: 1, contentVersion: 'release-8', mediaAssets: { clip: {
+      path: '/assets/tid/clip.mp4', licenseId: 'TEST-ONLY', redistributionAllowed: true, sha256,
+    } } },
+    cacheStorage: { open: async () => ({ match: async () => undefined, put: async () => { cached += 1; } }) },
+    fetcher: async () => { fetched += 1; return new Response(actualBytes); }, maxRetries: 2,
+  });
+  assert.equal(response.status, 502);
+  assert.equal(fetched, 3);
+  assert.equal(cached, 0);
 });
 
 const workerSource = await readFile(new URL('../public/service-worker.js', import.meta.url), 'utf8');
@@ -82,6 +139,10 @@ test('app shell excludes large avatar downloads and includes its runtime depende
 
   assert.equal(assets.includes('./assets/avatar/rain.glb'), false);
   assert.equal(assets.includes('./assets/avatar/saved-poses.json'), false);
+  assert.equal(assets.includes('./assets/tid/approved-media.webm'), false);
+  assert.ok(assets.includes('./assets/tid/content-manifest.json'));
+  assert.ok(assets.includes('./assets/tid/reviewed-content.json'));
+  assert.ok(assets.includes('./assets/tid/morphology-rules.json'));
   for (const asset of [
     './', './index.html', './styles.css', './app.mjs', './avatar.mjs', './matcher.mjs',
     './sw-policy.js', './manifest.webmanifest', './icons/icon.svg', './icons/maskable.svg',
@@ -93,8 +154,9 @@ test('app shell excludes large avatar downloads and includes its runtime depende
 });
 
 test('app shell contains only the current release cache prefix policy', () => {
-  assert.match(workerSource, /const CACHE_NAME = 'tid-kopru-v2'/u);
+  assert.match(workerSource, /const CACHE_NAME = 'tid-kopru-v3'/u);
   assert.match(workerSource, /shouldDeleteCache\(name, CACHE_NAME\)/u);
+  assert.match(workerSource, /getReviewedMediaResponse/u);
 });
 
 const appHtml = await readFile(new URL('../public/index.html', import.meta.url), 'utf8');

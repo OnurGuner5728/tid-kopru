@@ -18,6 +18,8 @@ export class SignAvatar {
     this.ready = false;
     this.playing = false;
     this.stopRequested = false;
+    this.playbackFrameId = null;
+    this.playbackResolve = null;
   }
 
   async initialize() {
@@ -205,8 +207,68 @@ export class SignAvatar {
     }
   }
 
+  playValidatedAnimation(animationId, animation, { startMs = 0, endMs = animation?.durationMs, onFrame = () => {} } = {}) {
+    if (!this.ready || this.playing || !/^[A-Za-z0-9._-]+$/u.test(animationId ?? '')
+      || !Number.isInteger(animation?.durationMs) || !Array.isArray(animation?.frames)
+      || !Number.isInteger(startMs) || !Number.isInteger(endMs) || startMs < 0 || endMs <= startMs
+      || endMs > animation.durationMs || animation.frames.length < 2) {
+      return Promise.reject(Object.assign(new Error('animation_invalid'), { code: 'animation_invalid' }));
+    }
+    const frames = animation.frames;
+    if (!frames.every((frame, index) => (
+      Number.isInteger(frame?.atMs)
+      && frame.atMs >= 0
+      && frame.atMs <= animation.durationMs
+      && (index === 0 || frame.atMs > frames[index - 1].atMs)
+      && frame.pose && typeof frame.pose === 'object'
+      && Object.values(frame.pose).every((rotation) => (
+        rotation && ['x', 'y', 'z'].every((axis) => Number.isFinite(rotation[axis]))
+      ))
+    ))) {
+      return Promise.reject(Object.assign(new Error('animation_invalid'), { code: 'animation_invalid' }));
+    }
+
+    this.playing = true;
+    this.stopRequested = false;
+    const startedAt = performance.now();
+    return new Promise((resolve) => {
+      this.playbackResolve = resolve;
+      const tick = (now) => {
+        if (this.stopRequested) return;
+        const elapsed = Math.min(endMs, startMs + (now - startedAt));
+        let nextIndex = frames.findIndex((frame) => frame.atMs >= elapsed);
+        if (nextIndex < 0) nextIndex = frames.length - 1;
+        const fromIndex = Math.max(0, nextIndex - (frames[nextIndex].atMs > elapsed ? 1 : 0));
+        const from = frames[fromIndex];
+        const to = frames[Math.min(fromIndex + 1, frames.length - 1)];
+        const fraction = to.atMs === from.atMs ? 0 : Math.max(0, Math.min(1, (elapsed - from.atMs) / (to.atMs - from.atMs)));
+        this.interpolatePoses(from.pose, to.pose, fraction);
+        onFrame({ animationId, elapsedMs: elapsed, durationMs: animation.durationMs });
+        if (elapsed >= endMs) {
+          this.applyIdlePose();
+          this.playing = false;
+          this.playbackFrameId = null;
+          this.playbackResolve = null;
+          resolve({ status: 'completed' });
+          return;
+        }
+        this.playbackFrameId = requestAnimationFrame(tick);
+      };
+      this.playbackFrameId = requestAnimationFrame(tick);
+    });
+  }
+
   stop() {
     this.stopRequested = true;
+    if (this.playbackFrameId !== null) cancelAnimationFrame(this.playbackFrameId);
+    this.playbackFrameId = null;
+    if (this.playbackResolve) {
+      const resolve = this.playbackResolve;
+      this.playbackResolve = null;
+      this.playing = false;
+      this.applyIdlePose();
+      resolve({ status: 'stopped' });
+    }
   }
 }
 
