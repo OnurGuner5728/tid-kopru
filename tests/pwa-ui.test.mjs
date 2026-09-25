@@ -13,6 +13,12 @@ test('avatar retry is an accessible control beside the loading surface', () => {
   assert.match(html, /id="pwa-status"[^>]*role="status"[^>]*aria-live="polite"/u);
 });
 
+test('public app does not request the character model while its redistribution rights are unverified', () => {
+  assert.match(app, /const AVATAR_MODEL_REDISTRIBUTION_APPROVED = false;/u);
+  assert.match(app, /if \(!AVATAR_MODEL_REDISTRIBUTION_APPROVED\) \{[\s\S]*?elements\.avatarRetry\.hidden = true;[\s\S]*?return;/u);
+  assert.match(app, /yeniden dağıtım izni doğrulanmadığı için avatar kapalı/u);
+});
+
 test('avatar retry reuses one scene while Turkish translation requires explicit confirmation', () => {
   assert.match(app, /async function loadAvatar\(\)/u);
   assert.match(app, /elements\.avatarLoader\.hidden = false/u);
@@ -46,7 +52,7 @@ test('speech failures explain microphone and network recovery paths', () => {
 });
 
 test('offline status explains which downloaded features remain available', () => {
-  assert.match(app, /Çevrimdışı kullanımda daha önce açılmış avatar ve onaylı TİD içerikleri kullanılabilir/u);
+  assert.match(app, /Çevrimdışı kullanımda daha önce indirilmiş onaylı TİD içeriği kullanılabilir/u);
   assert.match(app, /function renderPwaStatus\(\)/u);
   assert.match(app, /let pwaStatusMessage = '';/u);
 });

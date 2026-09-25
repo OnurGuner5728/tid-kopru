@@ -1,6 +1,6 @@
 # Yayın ve Android cihaz kontrol listesi
 
-**Durum: YAYIN ENGELLENMİŞTİR.** TİD uzman değerlendirmesi, lisanslı cümle medyası, `rain.glb` model hakkı ve fiziksel Android denemesi açık yayın kapılarıdır. Bir kutuyu yalnızca ölçülen sonuç, cihaz ve tarih kaydedildikten sonra işaretleyin. Güncel içerik sayımları [Türkçe→TİD değerlendirme raporundadır](tid-text-to-sign-evaluation.md).
+**Durum: ÇEVİRİ YAYINI ENGELLENMİŞTİR.** TİD uzman değerlendirmesi, lisanslı cümle medyası, gerçek kamera modeli ve fiziksel Android denemesi açık yayın kapılarıdır. `rain.glb` karakter modeli hakları doğrulanmadığı için kamuya açık kaynak ve site paketine dahil değildir. Bir kutuyu yalnızca ölçülen sonuç, cihaz ve tarih kaydedildikten sonra işaretleyin. Güncel içerik sayımları [Türkçe→TİD değerlendirme raporundadır](tid-text-to-sign-evaluation.md).
 
 ## Dağıtım dosyaları ve lisanslar
 
@@ -8,8 +8,8 @@ Yayın öncesi aşağıdaki her dosyanın kaynak, sürüm ve lisansını paketle
 
 - [ ] `public/app.mjs` — onaylı Türkçe→TİD arayüzü ve mikrofonun sağlayıcıya bağlı olabileceği uyarısı.
 - [ ] `public/avatar.mjs` — avatar yükleme ve yalnızca doğrulanmış içerik için poz oynatma.
-- [ ] `public/assets/avatar/rain.glb` — karakter modeli; yeniden dağıtım izni şu anda doğrulanmamış.
-- [ ] `public/assets/avatar/saved-poses.json` — SignBridge kaynaklı poz verisi; `SIGNBRIDGE-LICENSE.txt` MIT bildirimiyle birlikte.
+- [ ] `public/assets/avatar/rain.glb` — kamu paketine dahil değildir; yazılı yeniden dağıtım izni doğrulanmadan eklenmemelidir.
+- [ ] `public/assets/avatar/saved-poses.json` — SignBridge kaynaklı poz verisi; dağıtım paketi `public/SIGNBRIDGE-LICENSE.txt` lisans metnini içerir.
 - [ ] `public/assets/tid/content-manifest.json` — içerik sürümü, reviewed-content ve gloss→Türkçe özetleri ve medya hak/karmaları.
 - [ ] `public/assets/tid/gloss-to-turkish.json`, `public/assets/tid/sentence-model-manifest.json` — hash-bağlı ters yön içeriği ve model durumu; ikisi de şu an cümle eşleşmesi/model dosyası içermez.
 - [ ] `public/assets/tid/reviewed-content.json` — gerçek TİD incelemesi ve karar bilgisi bulunan cümle kayıtları; şu an boş.
@@ -21,7 +21,7 @@ Yayın öncesi aşağıdaki her dosyanın kaynak, sürüm ve lisansını paketle
 - [ ] `public/service-worker.js`, `public/sw-policy.js` — uygulama kabuğu ve manifestteki, lisans/karması doğrulanan medya önbelleği.
 - [ ] `public/icons/icon.svg`, `public/icons/maskable.svg` — manifest simgeleri; Android başlatıcısında kırpılmayı denetleyin.
 - [ ] `public/vendor/three/three.module.js`, `public/vendor/three/addons/loaders/GLTFLoader.js`, `public/vendor/three/addons/controls/OrbitControls.js`, `public/vendor/three/addons/utils/BufferGeometryUtils.js` — Three.js sürüm ve MIT bildirimleriyle birlikte.
-- [ ] Depo kökündeki `ASSET-NOTICE.txt` ve `SIGNBRIDGE-LICENSE.txt` kaynak paketinde tutulur; statik dağıtımın gerekli lisans metinlerini de içerdiğini doğrulayın.
+- [ ] Depo kökündeki `ASSET-NOTICE.txt` ve `SIGNBRIDGE-LICENSE.txt` kaynak paketinde; `public/ASSET-NOTICE.txt`, `public/SIGNBRIDGE-LICENSE.txt` ve `public/vendor/three/LICENSE.txt` statik dağıtımda tutulur.
 
 ### İçerik ve varlık yayını
 
@@ -29,7 +29,7 @@ Yayın öncesi aşağıdaki her dosyanın kaynak, sürüm ve lisansını paketle
 - [ ] Her yeni karşılık iki bağımsız akıcı TİD değerlendiricisinden onay alır; anlaşmazlığı üçüncü hakem çözer. Sentetik test incelemeleri sayılmaz.
 - [ ] Her oynatılabilir video veya avatar animasyonu için kaynağı, lisans belgesi/izni, atıfı, yeniden dağıtım kapsamı, SHA-256, süre, gloss hizası ve non-manual zamanlaması denetlenir.
 - [ ] Türkçe→TİD held-out 300 cümle değerlendirmesinde uzlaştırma sonrası anlam kabulü en az %90 olmadan yayın yapılmaz. Alt küme, ret ve yanlış kabul sonuçlarını da kaydedin.
-- [ ] `rain.glb` yeniden dağıtım hakkı doğrulanmadıysa bu karakteri içeren kamuya açık dağıtım engellidir. Kaynak kodun veya poz dosyalarının MIT olması karakter izni kanıtı değildir.
+- [ ] `rain.glb` yeniden dağıtım hakkı doğrulanmadığı için kamuya açık pakete dahil edilmez. Kaynak kodun veya poz dosyalarının MIT olması karakter izni kanıtı değildir.
 - [ ] Katılımcı kimliği, rıza formu, ham/özel video, landmark ve kimlik eşleme tablosu Git'e veya web önbelleğine konmaz.
 
 ## PWA kabuğu, çevrimdışı kullanım ve gizlilik
@@ -37,7 +37,7 @@ Yayın öncesi aşağıdaki her dosyanın kaynak, sürüm ve lisansını paketle
 - [ ] Service worker `./service-worker.js` adresinden klasik worker olarak kurulur ve manifestteki `./` kapsamıyla tutarlıdır.
 - [ ] Uygulama kabuğu HTML, CSS, gereken modülleri, manifesti, simgeleri, küçük TİD içerik/biçimbilim JSON dosyalarını ve vendored Three.js dosyalarını içerir. Cümle modeli/ONNX runtime açık kullanıcı indirmesi ve hash doğrulaması olmadan kabuk önbelleğine alınmaz.
 - [ ] Yalnızca hash doğrulanmış kamera model/runtime dosyaları ayrı `tid-camera-model-<sürüm>` önbelleğine yazılır; eski sürüm ancak yeni sürüm kurulunca silinir. Kare, landmark ve araştırma kaydı önbelleğe alınmaz.
-- [ ] Büyük avatar modeli/poz dosyaları ile TİD video medyası ilk kurulum kabuğuna alınmaz. TİD medyası ancak mevcut içerik manifesti listelemiş, hak beyanı geçerli ve indirilen dosya karması doğruysa sürümlü önbelleğe girer.
+- [ ] Yeniden dağıtım izni doğrulanmamış avatar modeli paketlenmez; poz verileri avatar oynatma açılana kadar yüklenmez. TİD video medyası yalnızca içerik manifesti listelemiş, hak beyanı geçerli ve dosya karması doğruysa sürümlü önbelleğe girer.
 - [ ] Manifestte listelenmeyen TİD varlığı ve ham katılımcı/kamera yolu önbelleğe girmez. İndirme, karma veya kota hatası kullanıcıya hata olarak bildirilir ve tekrar deneme yolu vardır.
 - [ ] Eski uygulama kabuğu sürüm önbelleği silinir; başka site önbelleklerine dokunulmaz.
 - [ ] Elle yazılan metin ve yerel çeviri akışının cihaz dışına gönderilmediği; mikrofon konuşma tanımanın tarayıcı sağlayıcısına göre ağ kullanabileceği açıklanır.

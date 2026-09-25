@@ -254,6 +254,6 @@ test('service-worker registration reports secure-install and offline-first-use r
   assert.match(appHtml, /id="pwa-status"[^>]*role="status"/u);
   assert.match(appSource, /navigator\.serviceWorker\.register\('\.\/service-worker\.js'\)\s*\.then\(/u);
   assert.match(appSource, /navigator\.serviceWorker\.register\('\.\/service-worker\.js'\)[\s\S]*?\.catch\(/u);
-  assert.match(appSource, /TİD medya dosyaları ilk oynatımda indirilir/u);
+  assert.match(appSource, /onaylı TİD medya dosyaları varsa ilk oynatımda indirilir/u);
 });
 

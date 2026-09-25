@@ -8,12 +8,15 @@ const authoringGuide = await readFile(new URL('../tools/tid_translation/README.m
 const tidEvaluation = await readFile(new URL('../docs/tid-text-to-sign-evaluation.md', import.meta.url), 'utf8').catch(() => '');
 const cameraEvaluation = await readFile(new URL('../docs/tid-camera-to-text-evaluation.md', import.meta.url), 'utf8').catch(() => '');
 const fieldResults = await readFile(new URL('../docs/tid-two-way-field-results.md', import.meta.url), 'utf8').catch(() => '');
+const publicAssetNotice = await readFile(new URL('../public/ASSET-NOTICE.txt', import.meta.url), 'utf8');
+const publicSignbridgeLicense = await readFile(new URL('../public/SIGNBRIDGE-LICENSE.txt', import.meta.url), 'utf8');
+const publicThreeLicense = await readFile(new URL('../public/vendor/three/LICENSE.txt', import.meta.url), 'utf8');
 
-test('setup guide states local command, remote HTTPS, first download, and speech caveat', () => {
+test('setup guide states local command, remote HTTPS, unavailable avatar, and speech caveat', () => {
   assert.match(readme, /python tools\/serve\.py/u);
   assert.match(readme, /http:\/\/localhost:8000/u);
   assert.match(readme, /HTTPS/u);
-  assert.match(readme, /8,1 MB/u);
+  assert.match(readme, /rain\.glb[\s\S]*?kamuya açık kaynak ve site paketinden çıkarılmış/u);
   assert.match(readme, /tarayıcı.*konuşma tanıma.*internet|konuşma tanıma.*uzak.*hizmet/isu);
 });
 
@@ -29,6 +32,13 @@ test('setup guide explains scope and product limits honestly', () => {
   assert.match(readme, /acil durum aracı değildir/u);
   assert.match(readme, /Android Chrome.*henüz.*(doğrulanmadı|yapılmamıştır)/isu);
   assert.doesNotMatch(readme, /genel.*TİD çevirisi sağlar|her cümleyi.*çevirir|çevrimdışı konuşma tanıma hazır/iu);
+});
+
+test('public files include required MIT notices and omit the unverified character model', () => {
+  assert.match(publicAssetNotice, /rain\.glb[\s\S]*?kamuya açık kaynak ve site paketinden çıkarılmış/u);
+  assert.match(publicSignbridgeLicense, /MIT License/u);
+  assert.match(publicThreeLicense, /The MIT License/u);
+  assert.match(readme, /AVATAR_MODEL_REDISTRIBUTION_APPROVED = false|yeniden dağıtım hakkı doğrulanmadı/u);
 });
 
 test('camera and two-way evaluation reports distinguish code tests from missing field evidence', () => {
@@ -61,7 +71,7 @@ test('authoring guide keeps production review and camera data outside the public
 
 test('release checklist inventories every public asset and blocks unresolved model rights', () => {
   for (const asset of [
-    'public/app.mjs', 'public/avatar.mjs', 'public/assets/avatar/rain.glb',
+    'public/app.mjs', 'public/avatar.mjs',
     'public/assets/avatar/saved-poses.json', 'public/icons/icon.svg', 'public/icons/maskable.svg',
     'public/index.html', 'public/manifest.webmanifest', 'public/matcher.mjs',
     'public/service-worker.js', 'public/styles.css', 'public/sw-policy.js',
@@ -75,7 +85,7 @@ test('release checklist inventories every public asset and blocks unresolved mod
     'public/vendor/three/addons/controls/OrbitControls.js',
     'public/vendor/three/addons/utils/BufferGeometryUtils.js'
   ]) assert.ok(checklist.includes(asset), `missing release inventory entry: ${asset}`);
-  assert.match(checklist, /rain\.glb.*hak|hak.*rain\.glb/isu);
+  assert.match(checklist, /rain\.glb[\s\S]*?kamuya açık kaynak ve site paketine dahil değildir/u);
   assert.match(checklist, /yayın.*engellen|yayına.*çıkarılmamal/isu);
   assert.match(checklist, /Three\.js.*MIT/isu);
   assert.match(checklist, /manifest.*ikon/isu);
@@ -86,4 +96,6 @@ test('release checklist inventories every public asset and blocks unresolved mod
   assert.match(checklist, /TİD.*300.*cümle|300.*cümle.*TİD/isu);
   assert.match(checklist, /25 Eylül 2026, Windows'ta localhost/u);
   assert.match(checklist, /Bu sonuç Android kurulumu.*doğrulaması değildir/u);
+  assert.match(checklist, /public\/SIGNBRIDGE-LICENSE\.txt/u);
+  assert.match(checklist, /public\/vendor\/three\/LICENSE\.txt/u);
 });
