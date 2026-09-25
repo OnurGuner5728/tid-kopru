@@ -139,6 +139,10 @@ textarea:focus, input:focus { outline: none; border-color: var(--teal); box-shad
 .tid-video[hidden] { display: none; }
 .avatar-stage { min-height: 410px; position: relative; overflow: hidden; border: 1px solid rgba(255,255,255,.08); border-radius: 21px; background: rgba(0,0,0,.08); }
 .avatar-stage[hidden] { display: none; }
+.letter-card-stage { min-height: 140px; display: flex; flex-wrap: wrap; align-content: center; justify-content: center; gap: 9px; padding: 20px; border: 1px solid rgba(255,255,255,.08); border-radius: 21px; background: rgba(0,0,0,.12); }
+.letter-card-stage[hidden] { display: none; }
+.letter-card { min-width: 48px; min-height: 58px; display: grid; place-items: center; padding: 8px; border: 1px solid rgba(255,255,255,.18); border-radius: 12px; color: var(--night); background: var(--lime); font-size: 26px; font-weight: 850; }
+.letter-card[data-kind="unsupported"] { color: white; background: var(--coral); font-size: 12px; }
 .avatar-stage canvas { position: absolute; inset: 0; width: 100% !important; height: 100% !important; }
 .avatar-loader { position: absolute; inset: 0; z-index: 2; display: grid; place-content: center; justify-items: center; gap: 12px; color: rgba(255,255,255,.65); font-size: 12px; }
 .avatar-loader span { width: 34px; height: 34px; border: 3px solid rgba(255,255,255,.14); border-top-color: var(--lime); border-radius: 50%; animation: spin .9s linear infinite; }

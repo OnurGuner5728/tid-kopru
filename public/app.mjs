@@ -67,7 +67,6 @@ let cameraClient = null;
 let cameraInstalled = false;
 let cameraCandidateReady = false;
 let privacyController;
-const AVATAR_MODEL_REDISTRIBUTION_APPROVED = false;
 
 function initializePrivacyModes() {
   privacyController = createPrivacyModeController({
@@ -245,14 +244,6 @@ function initializeTextToSpeech() {
 }
 
 async function loadAvatar() {
-  if (!AVATAR_MODEL_REDISTRIBUTION_APPROVED) {
-    elements.avatarLoader.hidden = true;
-    elements.avatarRetry.hidden = true;
-    elements.avatarRetry.disabled = true;
-    elements.avatarStatus.textContent = 'Karakter modelinin yeniden dağıtım izni doğrulanmadığı için avatar kapalı.';
-    return;
-  }
-
   elements.avatarLoader.hidden = false;
   elements.avatarRetry.hidden = true;
   elements.avatarRetry.disabled = true;
@@ -266,7 +257,7 @@ async function loadAvatar() {
     }
     await avatar.initialize();
     elements.avatarLoader.hidden = true;
-    elements.avatarStatus.textContent = 'Avatar hazır';
+    elements.avatarStatus.textContent = 'Sözlük gösterici hazır';
   } catch (error) {
     elements.avatarLoader.hidden = true;
     elements.avatarStatus.textContent = navigator.onLine

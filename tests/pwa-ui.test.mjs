@@ -13,10 +13,10 @@ test('avatar retry is an accessible control beside the loading surface', () => {
   assert.match(html, /id="pwa-status"[^>]*role="status"[^>]*aria-live="polite"/u);
 });
 
-test('public app does not request the character model while its redistribution rights are unverified', () => {
-  assert.match(app, /const AVATAR_MODEL_REDISTRIBUTION_APPROVED = false;/u);
-  assert.match(app, /if \(!AVATAR_MODEL_REDISTRIBUTION_APPROVED\) \{[\s\S]*?elements\.avatarRetry\.hidden = true;[\s\S]*?return;/u);
-  assert.match(app, /yeniden dağıtım izni doğrulanmadığı için avatar kapalı/u);
+test('public app uses the procedural avatar without requesting the unlicensed character model', () => {
+  assert.doesNotMatch(app, /rain\.glb|AVATAR_MODEL_REDISTRIBUTION_APPROVED/u);
+  assert.match(avatar, /createProceduralRig/u);
+  assert.doesNotMatch(avatar, /GLTFLoader|rain\.glb/u);
 });
 
 test('avatar retry reuses one scene while Turkish translation requires explicit confirmation', () => {
