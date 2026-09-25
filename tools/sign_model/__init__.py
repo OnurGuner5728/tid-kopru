@@ -1,0 +1,1 @@
+"""Privacy-gated tools for a future consented sign pilot."""

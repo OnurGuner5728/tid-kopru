@@ -134,20 +134,20 @@ git commit -m "feat: add local landmark capture for approved pilot data"
 - Model output: `{ signId, confidence, accepted, reason }`; `accepted` is false for unknown class or below-threshold confidence.
 - Model manifest contains `modelVersion`, SHA-256, MediaPipe model/runtime version, preprocessing version, ordered landmark names, allowed sign IDs, and confidence threshold.
 
-- [ ] **Step 1: Write tests for signer-disjoint splits and preprocessing identity**
+- [x] **Step 1: Write tests for signer-disjoint splits and preprocessing identity**
 
 Use a tiny fixture with signer codes `S01` through `S06`. Assert that train/validation/test signer sets are pairwise disjoint, every approved sign is represented in each split where possible, missing joints preserve their mask, resampling always emits 32 frames, and the preprocessing manifest hash is stable for identical settings.
 
-- [ ] **Step 2: Run model-pipeline tests and verify they fail before implementation**
+- [x] **Step 2: Run model-pipeline tests and verify they fail before implementation**
 
 Run: `python -m unittest discover -s tests -p "test_sign_model_pipeline.py" -v`.  
 Expected: FAIL because split/preprocessing functions are not implemented.
 
-- [ ] **Step 3: Implement grouped splitting and landmark preprocessing**
+- [x] **Step 3: Implement grouped splitting and landmark preprocessing**
 
 Split by signer, never by clip. Use a fixed random seed stored in the run manifest. Normalize only using training-derived statistics and apply the same transformation to validation/test. Refuse to train if any split contains a signer from another split or a record fails Task 1 validation.
 
-- [ ] **Step 4: Implement a compact temporal 1D CNN and unknown rejection**
+- [x] **Step 4: Implement a compact temporal 1D CNN and unknown rejection**
 
 Train only on approved signs plus the explicitly labeled blank/partial/unknown samples. Calibrate the confidence threshold on validation signers. Do not tune against the final test split. Save confusion matrix and per-class precision/recall with the trained checkpoint.
 
