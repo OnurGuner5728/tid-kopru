@@ -37,6 +37,8 @@ button:focus-visible, textarea:focus-visible, input:focus-visible, a:focus-visib
 .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #d39b34; box-shadow: 0 0 0 4px rgba(211,155,52,.14); }
 .status-dot.online { background: #45a66e; box-shadow: 0 0 0 4px rgba(69,166,110,.14); }
 
+.pwa-status { margin: 12px 0; padding: 12px 16px; border-radius: 12px; color: var(--teal-dark); background: #e8f1e9; font-size: 13px; line-height: 1.45; }
+.pwa-status[hidden] { display: none; }
 main { max-width: 1240px; margin: auto; padding: 0 28px 72px; }
 .intro { min-height: 440px; padding: 68px 6% 72px; position: relative; display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(280px, .6fr); align-items: end; gap: 64px; overflow: hidden; border-radius: 36px; color: white; background: var(--teal); }
 .intro::before { content: ""; position: absolute; width: 430px; height: 430px; right: -90px; top: -190px; border: 1px solid rgba(255,255,255,.16); border-radius: 50%; box-shadow: 0 0 0 70px rgba(255,255,255,.035), 0 0 0 140px rgba(255,255,255,.025); }
@@ -109,6 +111,9 @@ textarea:focus, input:focus { outline: none; border-color: var(--teal); box-shad
 .avatar-loader { position: absolute; inset: 0; z-index: 2; display: grid; place-content: center; justify-items: center; gap: 12px; color: rgba(255,255,255,.65); font-size: 12px; }
 .avatar-loader span { width: 34px; height: 34px; border: 3px solid rgba(255,255,255,.14); border-top-color: var(--lime); border-radius: 50%; animation: spin .9s linear infinite; }
 .avatar-loader[hidden] { display: none; }
+.avatar-retry { position: absolute; left: 50%; bottom: 16px; z-index: 4; max-width: calc(100% - 24px); transform: translateX(-50%); white-space: nowrap; }
+.avatar-retry:hover { transform: translate(-50%, -1px); }
+.avatar-retry[hidden] { display: none; }
 .current-word { position: absolute; left: 50%; bottom: 20px; z-index: 3; transform: translateX(-50%); padding: 9px 15px; border-radius: 999px; color: var(--night); background: var(--lime); font-size: 12px; font-weight: 850; opacity: 0; transition: opacity .2s; }
 .current-word.visible { opacity: 1; }
 .progress-track { height: 3px; margin: 14px 4px 0; overflow: hidden; border-radius: 4px; background: rgba(255,255,255,.1); }
@@ -160,3 +165,4 @@ footer p { margin: 0; text-align: right; }
   .mic-button { flex-basis: 100% !important; }
   .limits li { grid-template-columns: 1fr; gap: 6px; }
 }
+

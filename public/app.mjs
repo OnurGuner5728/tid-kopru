@@ -4,6 +4,7 @@ import { matchText } from './matcher.mjs';
 const elements = {
   networkDot: document.querySelector('#network-dot'),
   networkLabel: document.querySelector('#network-label'),
+  avatarRetry: document.querySelector('#avatar-retry'),
   pwaStatus: document.querySelector('#pwa-status'),
   speechSupport: document.querySelector('#speech-support'),
   heardText: document.querySelector('#heard-text'),
@@ -34,15 +35,18 @@ const elements = {
 };
 
 let recognition;
+let speechErrorMessage = '';
 let listening = false;
 let recognitionBase = '';
 let avatar;
 let dictionary = {};
+let pwaStatusMessage = '';
 
 function updateNetworkStatus() {
   const online = navigator.onLine;
   elements.networkDot.classList.toggle('online', online);
   elements.networkLabel.textContent = online ? 'Çevrimiçi' : 'Çevrimdışı kullanım';
+  renderPwaStatus();
 }
 
 function updateCharacterCount() {
@@ -72,7 +76,10 @@ function initializeSpeechRecognition() {
   recognition.continuous = true;
   recognition.interimResults = true;
 
-  recognition.addEventListener('start', () => setListeningState(true, 'Dinleniyor…'));
+  recognition.addEventListener('start', () => {
+    speechErrorMessage = '';
+    setListeningState(true, 'Dinleniyor…');
+  });
   recognition.addEventListener('result', (event) => {
     let finalText = '';
     let interimText = '';
@@ -85,14 +92,16 @@ function initializeSpeechRecognition() {
     elements.heardText.value = [recognitionBase, interimText.trim()].filter(Boolean).join(' ');
     updateCharacterCount();
   });
-  recognition.addEventListener('end', () => setListeningState(false, 'Hazır'));
+  recognition.addEventListener('end', () => setListeningState(false, speechErrorMessage || 'Hazır'));
   recognition.addEventListener('error', (event) => {
     const messages = {
-      'not-allowed': 'Mikrofon izni verilmedi.',
-      'no-speech': 'Konuşma algılanmadı.',
-      network: 'Konuşma hizmetine ulaşılamadı.'
+      'not-allowed': 'Mikrofon izni verilmedi. İzin verin veya metni elle yazın.',
+      'service-not-allowed': 'Tarayıcı konuşma hizmetine izin vermedi. Metni elle yazabilirsiniz.',
+      'no-speech': 'Konuşma algılanmadı. Tekrar deneyin veya metni elle yazın.',
+      network: 'Konuşma hizmetine ulaşılamadı. Metni elle yazabilirsiniz.'
     };
-    setListeningState(false, messages[event.error] ?? 'Konuşma tanınamadı.');
+    speechErrorMessage = messages[event.error] ?? 'Konuşma tanınamadı.';
+    setListeningState(false, speechErrorMessage);
   });
 
   elements.micButton.addEventListener('click', () => {
@@ -234,26 +243,48 @@ async function playMatchedSigns() {
   setTimeout(() => { elements.signProgress.style.width = '0%'; }, 450);
 }
 
-async function initializeAvatar() {
+async function loadAvatar() {
+  elements.avatarLoader.hidden = false;
+  elements.avatarRetry.hidden = true;
+  elements.avatarRetry.disabled = true;
+  elements.avatarStatus.textContent = 'Avatar hazırlanıyor…';
+  elements.showSigns.disabled = true;
+
   try {
-    avatar = new SignAvatar(elements.avatarStage, (message) => {
-      elements.avatarStatus.textContent = message;
-    });
+    if (!avatar) {
+      avatar = new SignAvatar(elements.avatarStage, (message) => {
+        elements.avatarStatus.textContent = message;
+      });
+    }
     dictionary = await avatar.initialize();
     elements.avatarLoader.hidden = true;
     elements.dictionaryCount.textContent = `${Object.keys(dictionary).length} kayıtlı işaret hazır`;
     elements.showSigns.disabled = false;
   } catch (error) {
     elements.avatarLoader.hidden = true;
+    elements.avatarStatus.textContent = navigator.onLine
+      ? 'Avatar yüklenemedi. İnternet bağlantısını kontrol edip yeniden deneyin.'
+      : 'Avatar henüz indirilmedi. İlk yükleme için internet gerekir.';
     elements.dictionaryCount.textContent = 'İşaret sözlüğü yüklenemedi.';
+    elements.avatarRetry.hidden = false;
+    elements.avatarRetry.disabled = false;
     elements.showSigns.disabled = true;
     console.error(error);
   }
 }
 
-function setPwaStatus(message) {
+function renderPwaStatus() {
+  const offlineMessage = navigator.onLine
+    ? ''
+    : 'Çevrimdışı kullanımda yalnızca daha önce açılmış avatar dosyaları kullanılabilir. Mikrofon tanıma internet gerektirebilir.';
+  const message = [pwaStatusMessage, offlineMessage].filter(Boolean).join(' ');
   elements.pwaStatus.textContent = message;
-  elements.pwaStatus.hidden = false;
+  elements.pwaStatus.hidden = !message;
+}
+
+function setPwaStatus(message) {
+  pwaStatusMessage = message;
+  renderPwaStatus();
 }
 
 function initializePwa() {
@@ -278,6 +309,7 @@ function initializePwa() {
 
 elements.showSigns.disabled = true;
 elements.showSigns.addEventListener('click', playMatchedSigns);
+elements.avatarRetry.addEventListener('click', loadAvatar);
 elements.signText.addEventListener('keydown', (event) => {
   if (event.key === 'Enter') playMatchedSigns();
 });
@@ -286,6 +318,9 @@ initializePwa();
 initializeSpeechRecognition();
 initializeTextActions();
 initializeTextToSpeech();
-initializeAvatar();
+loadAvatar();
 updateCharacterCount();
+
+
+
 
