@@ -5,6 +5,7 @@ import { createTidOutputController } from './tid-output-ui.mjs';
 import { SignRecognitionClient } from './sign-recognition.mjs';
 import { downloadCameraModel } from './onnx-runtime-loader.mjs';
 import { translateTidGlossToTurkish } from './tid-transfer.mjs';
+import { TRANSLATION_MODES, createPrivacyModeController } from './privacy-mode.mjs';
 
 const elements = {
   networkDot: document.querySelector('#network-dot'),
@@ -46,7 +47,10 @@ const elements = {
   cameraStop: document.querySelector('#camera-stop'),
   cameraCandidateText: document.querySelector('#camera-candidate-text'),
   cameraEdit: document.querySelector('#camera-edit'),
-  cameraConfirm: document.querySelector('#camera-confirm')
+  cameraConfirm: document.querySelector('#camera-confirm'),
+  modeInputs: [...document.querySelectorAll('[name="translation-mode"]')],
+  cloudConsent: document.querySelector('#cloud-consent'),
+  cloudDisclosure: document.querySelector('#cloud-disclosure'),
 };
 
 let recognition;
@@ -62,7 +66,35 @@ let cameraManifest = null;
 let cameraClient = null;
 let cameraInstalled = false;
 let cameraCandidateReady = false;
+let privacyController;
 const AVATAR_MODEL_REDISTRIBUTION_APPROVED = false;
+
+function initializePrivacyModes() {
+  privacyController = createPrivacyModeController({
+    onChange: ({ mode, cloudConsent }) => {
+      elements.modeInputs.forEach((input) => { input.checked = input.value === mode; });
+      elements.cloudConsent.disabled = mode === TRANSLATION_MODES.LOCAL;
+      elements.cloudConsent.checked = cloudConsent;
+      elements.cloudDisclosure.innerHTML = cloudConsent
+        ? '<strong>Bulut:</strong> Bu oturum için açık. Yalnızca ayrıca gönderdiğiniz kısa klip kullanılır.'
+        : '<strong>Bulut:</strong> Kapalı. Hiçbir kamera klibi gönderilmez.';
+    },
+  });
+  elements.modeInputs.forEach((input) => input.addEventListener('change', () => {
+    if (input.checked) privacyController.setMode(input.value);
+  }));
+  elements.cloudConsent.addEventListener('change', () => {
+    if (elements.cloudConsent.checked) privacyController.grantCloudConsent();
+    else privacyController.revokeCloudConsent();
+  });
+  privacyController.registerDisposer(() => {
+    try { recognition?.abort?.(); } catch { /* recognition may already be closed */ }
+    globalThis.speechSynthesis?.cancel?.();
+    void cameraClient?.dispose();
+    cameraClient = null;
+    cameraInstalled = false;
+  });
+}
 
 function updateNetworkStatus() {
   const online = navigator.onLine;
@@ -547,6 +579,7 @@ function initializePwa() {
 }
 
 initializeTidOutput();
+initializePrivacyModes();
 void loadTranslationResources();
 void initializeCameraTools();
 elements.avatarRetry.addEventListener('click', loadAvatar);

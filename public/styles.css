@@ -53,6 +53,21 @@ h1 em { color: var(--lime); font-family: Georgia, serif; font-weight: 400; }
 .privacy-card strong { font-size: 14px; }
 .privacy-card p { margin: 7px 0 0; color: rgba(255,255,255,.68); font-size: 13px; line-height: 1.5; }
 
+.privacy-controls { margin: 22px 0; }
+.privacy-controls .card-description { min-height: 0; }
+.mode-options { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 0; padding: 0; border: 0; }
+.mode-options legend { margin-bottom: 10px; font-size: 12px; font-weight: 800; }
+.mode-options label { display: flex; gap: 10px; align-items: flex-start; padding: 16px; border: 1px solid var(--line); border-radius: 15px; background: #fff; cursor: pointer; }
+.mode-options input { width: 20px; min-height: 20px; margin: 2px 0 0; accent-color: var(--teal); }
+.mode-options strong, .mode-options small { display: block; }
+.mode-options strong { font-size: 13px; }
+.mode-options small { margin-top: 5px; color: var(--muted); font-size: 11px; line-height: 1.4; }
+.cloud-consent { display: flex; gap: 10px; align-items: flex-start; margin-top: 14px; padding: 14px 16px; border-radius: 14px; background: #fff6df; color: #664c1c; font-size: 12px; line-height: 1.45; }
+.cloud-consent input { width: 20px; min-height: 20px; margin: 0; accent-color: var(--teal); }
+.privacy-disclosures { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 14px; }
+.privacy-disclosures p { margin: 0; padding: 12px 14px; border-radius: 12px; background: #eef5f1; color: var(--muted); font-size: 11px; line-height: 1.45; }
+.privacy-disclosures strong { color: var(--teal-dark); }
+
 .conversation-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; margin: 22px 0; }
 .tool-card { min-width: 0; padding: 34px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--card); box-shadow: var(--shadow); }
 .card-heading { display: flex; gap: 14px; align-items: flex-start; }
@@ -158,7 +173,7 @@ footer p { margin: 0; text-align: right; }
   main { padding: 0 12px 48px; }
   .intro { min-height: auto; padding: 58px 28px 32px; grid-template-columns: 1fr; gap: 36px; border-radius: 26px; }
   .intro-copy { font-size: 16px; }
-  .conversation-grid, .sign-section, .limits, .camera-layout { grid-template-columns: 1fr; }
+  .conversation-grid, .sign-section, .limits, .camera-layout, .mode-options, .privacy-disclosures { grid-template-columns: 1fr; }
   .tool-card { padding: 26px 20px; }
   .card-description { min-height: auto; }
   .sign-copy { padding: 38px 22px 28px; }

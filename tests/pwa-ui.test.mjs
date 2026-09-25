@@ -75,3 +75,15 @@ test('first avatar fetch waits for service-worker control so its download can be
   assert.match(app, /navigator\.serviceWorker\.register\('\.\/service-worker\.js'\)[\s\S]*?finally\(loadAvatar\)/u);
   assert.doesNotMatch(app, /initializeTextToSpeech\(\);\s*loadAvatar\(\);/u);
 });
+
+test('privacy panel separates local hybrid cloud camera and microphone choices', () => {
+  assert.match(html, /name="translation-mode"[^>]*value="local"[^>]*checked/u);
+  assert.match(html, /name="translation-mode"[^>]*value="hybrid"/u);
+  assert.match(html, /name="translation-mode"[^>]*value="cloud-assisted"/u);
+  assert.match(html, /id="camera-disclosure"/u);
+  assert.match(html, /id="microphone-disclosure"/u);
+  assert.match(html, /id="cloud-disclosure"/u);
+  assert.match(html, /id="cloud-consent"[^>]*type="checkbox"/u);
+  assert.match(app, /createPrivacyModeController/u);
+  assert.match(app, /initializePrivacyModes/u);
+});

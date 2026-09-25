@@ -43,6 +43,26 @@
       </aside>
     </section>
 
+    <section class="privacy-controls tool-card" aria-labelledby="privacy-controls-title">
+      <div class="card-heading">
+        <span class="step-number" aria-hidden="true">00</span>
+        <div><p class="kicker">İzin merkezi</p><h2 id="privacy-controls-title">Nasıl çalışsın?</h2></div>
+      </div>
+      <p class="card-description">Yerel mod varsayılandır. Kamera veya mikrofon yalnızca ilgili düğmeye dokunduğunuzda açılır.</p>
+      <fieldset class="mode-options">
+        <legend>Çeviri modu</legend>
+        <label><input name="translation-mode" value="local" type="radio" checked><span><strong>Yalnızca cihazda</strong><small>Görüntü, landmark ve metin gönderilmez.</small></span></label>
+        <label><input name="translation-mode" value="hybrid" type="radio"><span><strong>Akıllı hibrit</strong><small>Önce yerel modeller; bulut ayrıca onaylanırsa kullanılır.</small></span></label>
+        <label><input name="translation-mode" value="cloud-assisted" type="radio"><span><strong>Bulut destekli</strong><small>Düşük güvenli kısa klipler ayrıca onayınızla gönderilebilir.</small></span></label>
+      </fieldset>
+      <label class="cloud-consent"><input id="cloud-consent" type="checkbox" disabled><span>Kısa kamera klibinin seçili bulut sağlayıcısına gönderilmesine bu oturum için izin veriyorum.</span></label>
+      <div class="privacy-disclosures">
+        <p id="camera-disclosure"><strong>Kamera:</strong> Düğmeye basınca açılır; yerel modda kareler cihazdan çıkmaz.</p>
+        <p id="microphone-disclosure"><strong>Mikrofon:</strong> Düğmeye basınca açılır; tarayıcının konuşma hizmeti internet kullanabilir.</p>
+        <p id="cloud-disclosure" role="status" aria-live="polite"><strong>Bulut:</strong> Kapalı. Hiçbir kamera klibi gönderilmez.</p>
+      </div>
+    </section>
+
     <section class="conversation-grid" aria-label="İletişim araçları">
       <article class="tool-card speech-card">
         <div class="card-heading">
