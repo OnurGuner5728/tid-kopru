@@ -1,5 +1,7 @@
 import { SignAvatar } from './avatar.mjs';
-import { matchText } from './matcher.mjs';
+import { loadTidTranslationResources, translateTurkishToTid } from './tid-transfer.mjs';
+import { createTidMediaPlayer } from './tid-media-player.mjs';
+import { createTidOutputController } from './tid-output-ui.mjs';
 
 const elements = {
   networkDot: document.querySelector('#network-dot'),
@@ -20,18 +22,18 @@ const elements = {
   speakButton: document.querySelector('#speak-button'),
   stopSpeech: document.querySelector('#stop-speech'),
   ttsStatus: document.querySelector('#tts-status'),
-  signText: document.querySelector('#sign-text'),
-  showSigns: document.querySelector('#show-signs'),
-  dictionaryCount: document.querySelector('#dictionary-count'),
-  matchSummary: document.querySelector('#match-summary'),
-  tokenList: document.querySelector('#token-list'),
-  missingBox: document.querySelector('#missing-box'),
-  missingWords: document.querySelector('#missing-words'),
+  confirmTurkish: document.querySelector('#confirm-turkish'),
+  tidSource: document.querySelector('#tid-source'),
+  tidStatus: document.querySelector('#tid-status'),
+  tidGloss: document.querySelector('#tid-gloss'),
+  playTid: document.querySelector('#play-tid'),
+  stopTid: document.querySelector('#stop-tid'),
+  retryTid: document.querySelector('#retry-tid'),
+  tidProgress: document.querySelector('#tid-progress'),
+  tidVideo: document.querySelector('#tid-video'),
   avatarStage: document.querySelector('#avatar-stage'),
   avatarLoader: document.querySelector('#avatar-loader'),
-  avatarStatus: document.querySelector('#avatar-status'),
-  currentWord: document.querySelector('#current-word'),
-  signProgress: document.querySelector('#sign-progress')
+  avatarStatus: document.querySelector('#avatar-status')
 };
 
 let recognition;
@@ -39,7 +41,9 @@ let speechErrorMessage = '';
 let listening = false;
 let recognitionBase = '';
 let avatar;
-let dictionary = {};
+let translationResources;
+let translationPlayer;
+let tidOutput;
 let pwaStatusMessage = '';
 
 function updateNetworkStatus() {
@@ -55,6 +59,7 @@ function updateCharacterCount() {
 
 function setListeningState(active, label) {
   listening = active;
+  tidOutput?.setSpeechActive(active);
   elements.micButton.classList.toggle('listening', active);
   elements.micButton.querySelector('span').textContent = active ? 'Dinlemeyi durdur' : 'Dinlemeyi başlat';
   elements.listeningState.classList.toggle('active', active);
@@ -90,7 +95,7 @@ function initializeSpeechRecognition() {
     }
     if (finalText) recognitionBase = [recognitionBase, finalText.trim()].filter(Boolean).join(' ');
     elements.heardText.value = [recognitionBase, interimText.trim()].filter(Boolean).join(' ');
-    updateCharacterCount();
+    elements.heardText.dispatchEvent(new Event('input', { bubbles: true }));
   });
   recognition.addEventListener('end', () => setListeningState(false, speechErrorMessage || 'Hazır'));
   recognition.addEventListener('error', (event) => {
@@ -123,7 +128,7 @@ function initializeTextActions() {
   elements.clearHeard.addEventListener('click', () => {
     elements.heardText.value = '';
     recognitionBase = '';
-    updateCharacterCount();
+    elements.heardText.dispatchEvent(new Event('input', { bubbles: true }));
     elements.heardText.focus();
   });
   elements.fullscreenButton.addEventListener('click', () => {
@@ -189,94 +194,105 @@ function initializeTextToSpeech() {
   });
 }
 
-function renderMatches(result) {
-  elements.tokenList.replaceChildren();
-  result.matched.forEach(({ dictionaryKey }, index) => {
-    const token = document.createElement('span');
-    token.className = 'token';
-    token.dataset.index = String(index);
-    token.textContent = dictionaryKey;
-    elements.tokenList.appendChild(token);
-  });
-  elements.missingBox.hidden = result.missing.length === 0;
-  elements.missingWords.textContent = result.missing.map(({ source }) => source).join(', ');
-  elements.matchSummary.textContent = result.tokens.length
-    ? `${result.matched.length} eşleşme · ${result.missing.length} bulunamayan sözcük`
-    : `${Object.keys(dictionary).length} kayıtlı işaret hazır`;
-}
-
-function setActiveToken(index, done) {
-  document.querySelectorAll('.token').forEach((token) => token.classList.remove('playing'));
-  const current = document.querySelector(`.token[data-index="${index}"]`);
-  if (current) current.classList.add(done ? 'done' : 'playing');
-}
-
-async function playMatchedSigns() {
-  const text = elements.signText.value.trim();
-  if (!text) {
-    elements.matchSummary.textContent = 'Önce gösterilecek metni yazın.';
-    elements.signText.focus();
-    return;
-  }
-  const result = matchText(text, dictionary);
-  renderMatches(result);
-  if (!result.matched.length) return;
-  if (!avatar?.ready) {
-    elements.matchSummary.textContent = 'Avatar henüz hazırlanıyor.';
-    return;
-  }
-  if (avatar.playing) {
-    avatar.stop();
-    return;
-  }
-
-  elements.showSigns.textContent = 'Oynatmayı durdur';
-  const words = result.matched.map(({ dictionaryKey }) => dictionaryKey);
-  await avatar.playSequence(words, ({ index, word, total, done }) => {
-    setActiveToken(index, done);
-    elements.currentWord.textContent = word;
-    elements.currentWord.classList.toggle('visible', !done);
-    elements.signProgress.style.width = `${((index + (done ? 1 : 0)) / total) * 100}%`;
-  });
-  elements.currentWord.classList.remove('visible');
-  elements.showSigns.textContent = 'İşaretleri göster';
-  setTimeout(() => { elements.signProgress.style.width = '0%'; }, 450);
-}
-
 async function loadAvatar() {
   elements.avatarLoader.hidden = false;
   elements.avatarRetry.hidden = true;
   elements.avatarRetry.disabled = true;
   elements.avatarStatus.textContent = 'Avatar hazırlanıyor…';
-  elements.showSigns.disabled = true;
 
   try {
     if (!avatar) {
       avatar = new SignAvatar(elements.avatarStage, (message) => {
-        elements.avatarStatus.textContent = message;
+        elements.avatarStatus.textContent = message.includes('kayıtlı işaret hazır') ? 'Avatar hazır' : message;
       });
     }
-    dictionary = await avatar.initialize();
+    await avatar.initialize();
     elements.avatarLoader.hidden = true;
-    elements.dictionaryCount.textContent = `${Object.keys(dictionary).length} kayıtlı işaret hazır`;
-    elements.showSigns.disabled = false;
+    elements.avatarStatus.textContent = 'Avatar hazır';
   } catch (error) {
     elements.avatarLoader.hidden = true;
     elements.avatarStatus.textContent = navigator.onLine
       ? 'Avatar yüklenemedi. İnternet bağlantısını kontrol edip yeniden deneyin.'
       : 'Avatar henüz indirilmedi. İlk yükleme için internet gerekir.';
-    elements.dictionaryCount.textContent = 'İşaret sözlüğü yüklenemedi.';
     elements.avatarRetry.hidden = false;
     elements.avatarRetry.disabled = false;
-    elements.showSigns.disabled = true;
     console.error(error);
   }
+}
+
+async function loadTranslationResources({ retryCurrentText = false } = {}) {
+  tidOutput?.setLoading('Onaylı TİD içerik listesi yükleniyor…');
+  try {
+    translationResources = await loadTidTranslationResources();
+    tidOutput?.setIdle();
+    if (retryCurrentText && elements.heardText.value.trim()) await tidOutput?.confirm();
+  } catch {
+    translationResources = null;
+    tidOutput?.setError('Onaylı TİD içerik listesi yüklenemedi. Bağlantıyı kontrol edip yeniden deneyin; Türkçe metniniz düzenlenebilir durumda.');
+  }
+}
+
+function initializeTidOutput() {
+  const avatarPlayer = {
+    playValidatedAnimation: (...args) => {
+      if (!avatar?.ready) throw Object.assign(new Error('avatar_unavailable'), { code: 'avatar_unavailable' });
+      return avatar.playValidatedAnimation(...args);
+    },
+    stop: () => avatar?.stop(),
+    applyIdlePose: () => avatar?.applyIdlePose(),
+  };
+  translationPlayer = createTidMediaPlayer({
+    avatar: avatarPlayer,
+    videoElement: elements.tidVideo,
+    resolveAsset: async (assetId) => {
+      const asset = translationResources?.mediaManifest?.[assetId];
+      if (!asset) return null;
+      const response = await fetch(new URL(asset.path, translationResources.origin), { credentials: 'same-origin' });
+      if (!response.ok) return null;
+      return {
+        ...asset,
+        bytes: await response.arrayBuffer(),
+        mediaType: response.headers.get('content-type')?.split(';')[0]?.trim().toLowerCase() ?? '',
+      };
+    },
+  });
+  tidOutput = createTidOutputController({
+    input: elements.heardText,
+    confirmButton: elements.confirmTurkish,
+    playButton: elements.playTid,
+    stopButton: elements.stopTid,
+    retryButton: elements.retryTid,
+    sourceText: elements.tidSource,
+    status: elements.tidStatus,
+    gloss: elements.tidGloss,
+    progress: elements.tidProgress,
+    player: translationPlayer,
+    translateText: (text) => {
+      if (!translationResources) throw new Error('translation_resources_unavailable');
+      return translateTurkishToTid(text, translationResources);
+    },
+    onMediaSegment: (segment, progress) => {
+      if (progress.result) {
+        elements.tidVideo.hidden = true;
+        elements.avatarStage.hidden = false;
+        elements.avatarStatus.textContent = progress.result.status === 'completed'
+          ? 'Gösterim tamamlandı'
+          : progress.result.status === 'error' ? 'Gösterim hazırlanamadı' : 'Gösterim durdu';
+      } else {
+        const showVideo = segment.kind === 'video';
+        elements.tidVideo.hidden = !showVideo;
+        elements.avatarStage.hidden = showVideo;
+        elements.avatarStatus.textContent = showVideo ? 'Onaylı video oynatılıyor' : 'Onaylı avatar hareketi oynatılıyor';
+      }
+    },
+    onRetry: () => loadTranslationResources({ retryCurrentText: true }),
+  });
 }
 
 function renderPwaStatus() {
   const offlineMessage = navigator.onLine
     ? ''
-    : 'Çevrimdışı kullanımda yalnızca daha önce açılmış avatar dosyaları kullanılabilir. Mikrofon tanıma internet gerektirebilir.';
+    : 'Çevrimdışı kullanımda daha önce açılmış avatar ve onaylı TİD içerikleri kullanılabilir. Mikrofon tanıma internet gerektirebilir.';
   const message = [pwaStatusMessage, offlineMessage].filter(Boolean).join(' ');
   elements.pwaStatus.textContent = message;
   elements.pwaStatus.hidden = !message;
@@ -324,7 +340,7 @@ function initializePwa() {
     .then(async () => {
       const controlled = await waitForServiceWorkerControl();
       setPwaStatus(controlled
-        ? 'Uygulama çevrimdışı açılış için hazır. Kurulum HTTPS bağlantısında yapılır; ilk çevrimdışı kullanım için avatarı bir kez indirip açın.'
+          ? 'Uygulama çevrimdışı açılış için hazır. Kurulum HTTPS bağlantısında yapılır; TİD medya dosyaları ilk oynatımda indirilir.'
         : 'Çevrimdışı önbellek kurulumu zaman aldı. Avatar yine yüklenmeyi deneyecek; çevrimdışı kullanım için sayfayı yenileyin.');
     })
     .catch(() => {
@@ -333,12 +349,9 @@ function initializePwa() {
     .finally(loadAvatar);
 }
 
-elements.showSigns.disabled = true;
-elements.showSigns.addEventListener('click', playMatchedSigns);
+initializeTidOutput();
+void loadTranslationResources();
 elements.avatarRetry.addEventListener('click', loadAvatar);
-elements.signText.addEventListener('keydown', (event) => {
-  if (event.key === 'Enter') playMatchedSigns();
-});
 
 initializePwa();
 initializeSpeechRecognition();

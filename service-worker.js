@@ -9,6 +9,7 @@ const APP_SHELL_ASSETS = [
   './avatar.mjs',
   './matcher.mjs',
   './tid-media-player.mjs',
+  './tid-output-ui.mjs',
   './tid-transfer.mjs',
   './turkish-morphology.mjs',
   './sw-policy.js',
