@@ -7,18 +7,30 @@ function fail(code) {
   throw error;
 }
 
-function validateAssetPath(path, origin) {
+function resolvePublicBaseUrl(baseUrl, origin) {
+  let base;
+  try {
+    const candidate = baseUrl ?? (globalThis.location?.href || `${origin}/`);
+    base = new URL('./', candidate);
+  } catch {
+    fail('unsafe_asset_path');
+  }
+  if (base.origin !== origin) fail('unsafe_asset_path');
+  return base;
+}
+
+function validateAssetPath(path, origin, baseUrl) {
   if (typeof path !== 'string' || !SAFE_ASSET_PATH.test(path)
       || path.split('/').some((part, index) => index > 0 && ['', '.', '..'].includes(part))) {
     fail('unsafe_asset_path');
   }
   let url;
   try {
-    url = new URL(path, origin);
+    url = new URL(path.slice(1), baseUrl);
   } catch {
     fail('unsafe_asset_path');
   }
-  if (url.origin !== origin || url.pathname !== path || url.search || url.hash) fail('unsafe_asset_path');
+  if (url.origin !== origin || url.pathname !== `${baseUrl.pathname}${path.slice(1)}` || url.search || url.hash) fail('unsafe_asset_path');
   return url;
 }
 
@@ -33,6 +45,7 @@ async function sha256(bytes, cryptoProvider) {
 
 export async function verifySameOriginHashes(files, {
   origin = globalThis.location?.origin,
+  baseUrl,
   fetcher = globalThis.fetch?.bind(globalThis),
   cryptoProvider = globalThis.crypto,
   onProgress = () => {},
@@ -44,12 +57,13 @@ export async function verifySameOriginHashes(files, {
   } catch {
     fail('unsafe_asset_path');
   }
+  const pageBaseUrl = resolvePublicBaseUrl(baseUrl, pageOrigin);
   const seen = new Set();
   const verified = new Map();
   for (let index = 0; index < files.length; index += 1) {
     const file = files[index];
     if (!file || typeof file !== 'object' || Array.isArray(file) || typeof file.path !== 'string') fail('invalid_asset_manifest');
-    const url = validateAssetPath(file.path, pageOrigin);
+    const url = validateAssetPath(file.path, pageOrigin, pageBaseUrl);
     if (!SHA256_PATTERN.test(file.sha256 ?? '') || typeof file.licenseId !== 'string'
         || !file.licenseId.trim() || file.redistributionAllowed !== true || seen.has(file.path)) fail('invalid_asset_manifest');
     seen.add(file.path);
@@ -86,6 +100,7 @@ export async function createOnnxSession(manifest, runtime, options = {}) {
 
 export async function downloadCameraModel(manifest, {
   origin = globalThis.location?.origin,
+  baseUrl,
   fetcher = globalThis.fetch?.bind(globalThis),
   cryptoProvider = globalThis.crypto,
   cacheStorage = globalThis.caches,
@@ -93,10 +108,12 @@ export async function downloadCameraModel(manifest, {
 } = {}) {
   if (!manifest || manifest.available !== true || !/^[A-Za-z0-9._-]{1,80}$/u.test(manifest.modelVersion ?? '')) fail('model_unavailable');
   if (!cacheStorage?.open || !cacheStorage?.keys || !cacheStorage?.delete) fail('cache_unavailable');
-  const verified = await verifySameOriginHashes(manifest.files, { origin, fetcher, cryptoProvider, onProgress });
+  const verified = await verifySameOriginHashes(manifest.files, { origin, baseUrl, fetcher, cryptoProvider, onProgress });
   const finalName = `tid-camera-model-${manifest.modelVersion}`;
   const stagingName = `${finalName}-staging`;
-  const urls = [...verified].map(([path, bytes]) => [new URL(path, origin).href, bytes]);
+  const pageOrigin = new URL(origin).origin;
+  const pageBaseUrl = resolvePublicBaseUrl(baseUrl, pageOrigin);
+  const urls = [...verified].map(([path, bytes]) => [new URL(path.slice(1), pageBaseUrl).href, bytes]);
   let finalExisted = false;
   try {
     const names = await cacheStorage.keys();

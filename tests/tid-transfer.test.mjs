@@ -276,6 +276,33 @@ test('the packaged manifest loads only same-origin versioned reviewed content', 
   assert.equal(translateTidGlossToTurkish([{ glossId: 'HELLO', startFrame: 0, endFrame: 1, confidence: 0.9 }], resources.glossToTurkish).status, 'unsupported');
 });
 
+test('the content loader resolves every asset inside a project-site base path', async () => {
+  const baseUrl = 'https://tid.example/tid-kopru/';
+  const manifestText = await readFile(join(repositoryRoot, 'public/assets/tid/content-manifest.json'), 'utf8');
+  const reviewedText = await readFile(join(repositoryRoot, 'public/assets/tid/reviewed-content.json'), 'utf8');
+  const reverseText = await readFile(join(repositoryRoot, 'public/assets/tid/gloss-to-turkish.json'), 'utf8');
+  const expected = new Map([
+    ['/tid-kopru/assets/tid/content-manifest.json', manifestText],
+    ['/tid-kopru/assets/tid/reviewed-content.json', reviewedText],
+    ['/tid-kopru/assets/tid/gloss-to-turkish.json', reverseText],
+  ]);
+  const requested = [];
+  const fetcher = async (url) => {
+    const path = new URL(url).pathname;
+    requested.push(path);
+    return expected.has(path) ? response(expected.get(path)) : { ok: false, text: async () => '' };
+  };
+
+  const resources = await loadTidTranslationResources({
+    fetcher,
+    origin: 'https://tid.example',
+    publicBaseUrl: baseUrl,
+  });
+
+  assert.deepEqual(requested, [...expected.keys()]);
+  assert.equal(resources.publicBaseUrl, baseUrl);
+});
+
 test('the content loader rejects a gloss-to-Turkish hash mismatch', async () => {
   const reviewedContent = { schemaVersion: 1, contentVersion: 'test-content-v1', entries: [] };
   const reverseContent = { schemaVersion: 1, contentVersion: 'test-content-v1', vocabulary: [], phrases: [], templates: [] };

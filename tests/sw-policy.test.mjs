@@ -9,7 +9,7 @@ const source = await readFile(new URL('../public/sw-policy.js', import.meta.url)
 const context = { URL, Response, crypto: webcrypto };
 context.globalThis = context;
 vm.runInNewContext(source, context);
-const { getOfflineAwareResponse, getCameraModelResponse, shouldDeleteCache } = context.TidKopruCachePolicy;
+const { getOfflineAwareResponse, getCameraModelResponse, getReviewedMediaResponse, getAppRelativePath, shouldDeleteCache } = context.TidKopruCachePolicy;
 
 test('offline navigation returns the cached app shell', async () => {
   const shell = new Response('<main>TİD Köprü</main>');
@@ -108,6 +108,53 @@ test('camera files must be manifest-listed and same-origin', async () => {
   assert.equal(unlisted.status, 404);
   assert.equal(external.status, 503);
   assert.equal(fetched, 0);
+});
+
+test('service-worker routes are scoped to the project-site directory', () => {
+  assert.equal(getAppRelativePath('/tid-kopru/assets/tid/camera/model.onnx', '/tid-kopru/'), '/assets/tid/camera/model.onnx');
+  assert.equal(getAppRelativePath('/assets/tid/camera/model.onnx', '/tid-kopru/'), null);
+  assert.equal(getAppRelativePath('/tid-kopru-evil/assets/tid/camera/model.onnx', '/tid-kopru/'), null);
+});
+
+test('camera model manifest paths resolve inside a project-site directory', async () => {
+  const baseUrl = 'https://tid.test/tid-kopru/';
+  const manifest = { schemaVersion: 1, available: true, modelVersion: 'seq-v1', files: [
+    { path: '/assets/tid/camera/model.onnx', sha256: 'a'.repeat(64), licenseId: 'TEST-ONLY', redistributionAllowed: true },
+  ] };
+  let fetched = 0;
+  const response = await getCameraModelResponse({
+    request: request('https://tid.test/tid-kopru/assets/tid/camera/model.onnx'),
+    origin: 'https://tid.test', baseUrl, manifest,
+    cacheStorage: { open: async () => ({ match: async () => undefined }) },
+    fetcher: async () => { fetched += 1; return new Response('model bytes'); },
+  });
+  assert.equal(response.status, 200);
+  assert.equal(fetched, 1);
+});
+
+test('reviewed media resolves in the project-site directory and rejects paths outside it', async () => {
+  const baseUrl = 'https://tid.test/tid-kopru/';
+  const bytes = new TextEncoder().encode('approved media');
+  const { createHash } = await import('node:crypto');
+  const sha256 = createHash('sha256').update(bytes).digest('hex');
+  const manifest = { schemaVersion: 1, contentVersion: 'release-9', mediaAssets: {
+    clip: { path: '/assets/tid/clip.webm', licenseId: 'TEST-ONLY', redistributionAllowed: true, sha256 },
+  } };
+  const response = await getReviewedMediaResponse({
+    request: request('https://tid.test/tid-kopru/assets/tid/clip.webm'),
+    origin: 'https://tid.test', baseUrl, manifest,
+    cacheStorage: { open: async () => ({ match: async () => undefined, put: async () => {} }) },
+    fetcher: async () => new Response(bytes),
+  });
+  assert.equal(await response.text(), 'approved media');
+
+  const outside = await getReviewedMediaResponse({
+    request: request('https://tid.test/assets/tid/clip.webm'),
+    origin: 'https://tid.test', baseUrl, manifest,
+    cacheStorage: { open: async () => ({ match: async () => undefined }) },
+    fetcher: async () => new Response('must not fetch'),
+  });
+  assert.equal(outside, null);
 });
 
 test('only licensed manifest-listed TID assets are cached after their bytes match the approved hash', async () => {

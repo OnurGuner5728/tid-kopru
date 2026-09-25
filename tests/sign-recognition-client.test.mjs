@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createHash } from 'node:crypto';
+import { webcrypto } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
+import vm from 'node:vm';
 
 import { createOnnxSession, downloadCameraModel, verifySameOriginHashes } from '../public/onnx-runtime-loader.mjs';
 import { SignRecognitionClient } from '../public/sign-recognition.mjs';
@@ -151,6 +154,24 @@ test('asset verification rejects external origins before fetching', async () => 
   assert.equal(fetched, 0);
 });
 
+test('camera model files resolve under the project-site base path', async () => {
+  const baseUrl = 'https://tid.test/tid-kopru/';
+  const requested = [];
+  await verifySameOriginHashes(manifest().files, {
+    origin: 'https://tid.test',
+    baseUrl,
+    fetcher: async (url) => {
+      requested.push(url);
+      return makeResponse();
+    },
+  });
+
+  assert.deepEqual(requested.map((url) => new URL(url).pathname), [
+    '/tid-kopru/assets/tid/camera/model.onnx',
+    '/tid-kopru/assets/tid/camera/pipeline.mjs',
+  ]);
+});
+
 test('ONNX session creation uses the hash-verified model bytes', async () => {
   let received;
   const runtime = { InferenceSession: { create: async (modelBytes, options) => {
@@ -178,6 +199,66 @@ test('user-started model install verifies every hash before replacing an older v
   assert.equal(caches.stores.has('another-app-cache'), true);
   assert.equal(caches.stores.has('tid-camera-model-fixture-seq-v1-staging'), false);
   assert.equal(caches.stores.get('tid-camera-model-fixture-seq-v1').size, 2);
+});
+
+test('downloaded camera files are cached at their project-site URLs', async () => {
+  const baseUrl = 'https://tid.test/tid-kopru/';
+  const caches = fakeCaches();
+  await downloadCameraModel(manifest(), {
+    origin: 'https://tid.test',
+    baseUrl,
+    fetcher: async () => makeResponse(),
+    cacheStorage: caches,
+  });
+
+  const installedUrls = [...caches.stores.get('tid-camera-model-fixture-seq-v1').keys()];
+  assert.deepEqual(installedUrls.map((url) => new URL(url).pathname), [
+    '/tid-kopru/assets/tid/camera/model.onnx',
+    '/tid-kopru/assets/tid/camera/pipeline.mjs',
+  ]);
+});
+
+test('camera worker downloads manifest assets under its project-site directory', async () => {
+  const workerSource = await readFile(new URL('../public/sign-recognition-worker.js', import.meta.url), 'utf8');
+  const fetched = [];
+  const listeners = new Map();
+  let complete;
+  const finished = new Promise((resolve) => { complete = resolve; });
+  const self = {
+    location: { href: 'https://tid.test/tid-kopru/sign-recognition-worker.js', origin: 'https://tid.test' },
+    addEventListener(type, listener) { listeners.set(type, listener); },
+    postMessage(message) { if (message.type === 'ERROR' || message.type === 'READY') complete(message); },
+  };
+  const workerBytes = new TextEncoder().encode('verified worker fixture');
+  const workerHash = createHash('sha256').update(workerBytes).digest('hex');
+  vm.runInNewContext(workerSource, {
+    URL,
+    crypto: webcrypto,
+    self,
+    fetch: async (url) => {
+      fetched.push(url);
+      return { ok: true, arrayBuffer: async () => workerBytes.buffer.slice(workerBytes.byteOffset, workerBytes.byteOffset + workerBytes.byteLength) };
+    },
+  });
+  listeners.get('message')({ data: {
+    type: 'INIT',
+    manifest: {
+      available: true,
+      modelPath: '/assets/tid/camera/model.onnx',
+      runtimeModule: '/assets/tid/camera/pipeline.mjs',
+      preprocessingFingerprint: 'fixture-v1',
+      files: [
+        { path: '/assets/tid/camera/model.onnx', sha256: workerHash, licenseId: 'TEST-ONLY', redistributionAllowed: true },
+        { path: '/assets/tid/camera/pipeline.mjs', sha256: workerHash, licenseId: 'TEST-ONLY', redistributionAllowed: true },
+      ],
+    },
+  } });
+  await finished;
+
+  assert.deepEqual(fetched.map((url) => new URL(url).pathname), [
+    '/tid-kopru/assets/tid/camera/model.onnx',
+    '/tid-kopru/assets/tid/camera/pipeline.mjs',
+  ]);
 });
 
 test('a failed model hash preserves the previously installed model cache', async () => {

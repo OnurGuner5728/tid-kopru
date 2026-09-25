@@ -4,6 +4,7 @@ let frameQueue = Promise.resolve();
 
 const SHA256 = /^[0-9a-f]{64}$/u;
 const SAFE_PATH = /^\/(?:assets\/tid\/camera|vendor\/onnxruntime-web)\/[A-Za-z0-9._/-]+$/u;
+const PUBLIC_BASE_URL = new URL('./', self.location.href);
 
 function fail(code) {
   const error = new Error(code);
@@ -19,8 +20,9 @@ async function loadVerifiedAssets(value) {
         || asset.path.split('/').some((part, index) => index > 0 && ['', '.', '..'].includes(part))
         || !SHA256.test(asset.sha256 ?? '') || typeof asset.licenseId !== 'string'
         || !asset.licenseId.trim() || asset.redistributionAllowed !== true) fail('invalid_asset_manifest');
-    const url = new URL(asset.path, self.location.origin);
-    if (url.origin !== self.location.origin || url.pathname !== asset.path) fail('unsafe_asset_path');
+    const url = new URL(asset.path.slice(1), PUBLIC_BASE_URL);
+    if (url.origin !== self.location.origin
+        || url.pathname !== `${PUBLIC_BASE_URL.pathname}${asset.path.slice(1)}`) fail('unsafe_asset_path');
     const response = await fetch(url.href, { credentials: 'same-origin', cache: 'no-store' });
     if (!response.ok) fail('asset_unavailable');
     const bytes = await response.arrayBuffer();
@@ -37,7 +39,7 @@ async function initialize(value) {
       || typeof value.preprocessingFingerprint !== 'string' || !value.preprocessingFingerprint.trim()) fail('model_unavailable');
   const files = await loadVerifiedAssets(value);
   if (!files.has(value.modelPath) || !files.has(value.runtimeModule)) fail('model_file_missing');
-  const moduleUrl = new URL(value.runtimeModule, self.location.origin);
+  const moduleUrl = new URL(value.runtimeModule.slice(1), PUBLIC_BASE_URL);
   const adapter = await import(moduleUrl.href);
   if (typeof adapter.createPipeline !== 'function') fail('inference_pipeline_unavailable');
   pipeline = await adapter.createPipeline({ manifest: value, verifiedFiles: files });

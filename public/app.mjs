@@ -435,7 +435,7 @@ function initializeTidOutput() {
     resolveAsset: async (assetId) => {
       const asset = translationResources?.mediaManifest?.[assetId];
       if (!asset) return null;
-      const response = await fetch(new URL(asset.path, translationResources.origin), { credentials: 'same-origin' });
+      const response = await fetch(new URL(asset.path.replace(/^\/+/, ''), translationResources.publicBaseUrl), { credentials: 'same-origin' });
       if (!response.ok) return null;
       return {
         ...asset,
