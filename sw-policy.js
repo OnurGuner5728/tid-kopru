@@ -32,6 +32,31 @@
       && !name.startsWith(currentName);
   }
 
+  async function getCameraModelResponse({ request, origin, manifest, cacheStorage, fetcher }) {
+    if (request.method !== 'GET') return null;
+    const url = new URL(request.url);
+    if (url.origin !== origin || !manifest || manifest.schemaVersion !== 1 || manifest.available !== true
+        || typeof manifest.modelVersion !== 'string' || !/^[A-Za-z0-9._-]{1,80}$/.test(manifest.modelVersion)
+        || !Array.isArray(manifest.files)) {
+      return new Response('Yerel TİD cümle modeli kullanılamıyor.', { status: 503 });
+    }
+    const asset = manifest.files.find((candidate) => candidate?.path === url.pathname);
+    if (!asset || typeof asset.sha256 !== 'string' || !/^[0-9a-f]{64}$/.test(asset.sha256)
+        || typeof asset.licenseId !== 'string' || !asset.licenseId.trim() || asset.redistributionAllowed !== true
+        || !/^\/(?:assets\/tid\/camera|vendor\/onnxruntime-web)\/[A-Za-z0-9._/-]+$/.test(asset.path)
+        || asset.path.split('/').some((part, index) => index > 0 && ['', '.', '..'].includes(part))) {
+      return new Response('Model dosyası doğrulanmış listede bulunamadı.', { status: 404 });
+    }
+    const cache = await cacheStorage.open(`tid-camera-model-${manifest.modelVersion}`);
+    const cached = await cache.match(request.url);
+    if (cached) return cached;
+    try {
+      return await fetcher(request);
+    } catch {
+      return new Response('Model dosyası çevrimdışı olarak indirilmemiş.', { status: 503 });
+    }
+  }
+
   async function digestHex(bytes) {
     if (!globalThis.crypto?.subtle) return null;
     const digest = await globalThis.crypto.subtle.digest('SHA-256', bytes);
@@ -106,5 +131,5 @@
     });
   }
 
-  scope.TidKopruCachePolicy = { getOfflineAwareResponse, getReviewedMediaResponse, shouldDeleteCache };
+  scope.TidKopruCachePolicy = { getOfflineAwareResponse, getReviewedMediaResponse, getCameraModelResponse, shouldDeleteCache };
 })(globalThis);

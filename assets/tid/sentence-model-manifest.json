@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "available": false,
+  "modelVersion": null,
+  "contentVersion": "pilot-content-0",
+  "modelPath": null,
+  "runtimeModule": null,
+  "files": [],
+  "vocabulary": [],
+  "blankId": null,
+  "confidenceThreshold": null,
+  "preprocessingFingerprint": null,
+  "blockers": [
+    "consented_signer_disjoint_utterance_data_missing",
+    "licensed_local_mediapipe_runtime_missing",
+    "licensed_local_onnx_runtime_missing",
+    "trained_sentence_model_missing",
+    "independent_tid_review_and_device_evaluation_missing"
+  ]
+}

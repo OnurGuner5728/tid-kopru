@@ -1,4 +1,5 @@
 import { analyzeTurkishText, normalizeTurkish } from './turkish-morphology.mjs';
+import { hasTwoApprovals } from './tid-to-turkish.mjs';
 export { hasTwoApprovals, isValidGlossTimeline, translateTidGlossToTurkish } from './tid-to-turkish.mjs';
 
 const CONTENT_SCHEMA_VERSION = 1;
@@ -294,6 +295,23 @@ function validateAssetManifest(mediaAssets) {
   }
 }
 
+function validateGlossToTurkishBundle(bundle, manifest) {
+  if (!isRecord(bundle) || bundle.schemaVersion !== CONTENT_SCHEMA_VERSION
+      || bundle.contentVersion !== manifest.contentVersion
+      || !Array.isArray(bundle.vocabulary) || !Array.isArray(bundle.phrases) || !Array.isArray(bundle.templates)) {
+    fail('invalid_gloss_to_turkish_content');
+  }
+  if (bundle.vocabulary.some((gloss) => !isText(gloss))
+      || new Set(bundle.vocabulary).size !== bundle.vocabulary.length) fail('invalid_gloss_to_turkish_content');
+  for (const phrase of [...bundle.phrases, ...bundle.templates]) {
+    if (!isRecord(phrase) || !isText(phrase.id) || !Array.isArray(phrase.glosses)
+        || phrase.glosses.length === 0 || !phrase.glosses.every(isText)
+        || !phrase.glosses.every((gloss) => bundle.vocabulary.includes(gloss))
+        || !isText(phrase.turkishText) || !hasTwoApprovals(phrase)) fail('invalid_gloss_to_turkish_content');
+  }
+  return bundle;
+}
+
 export async function loadTidTranslationResources({
   fetcher = globalThis.fetch?.bind(globalThis),
   origin = globalThis.location?.origin,
@@ -317,6 +335,9 @@ export async function loadTidTranslationResources({
     || !isText(manifest.reviewedContent.path)
     || !SHA256_PATTERN.test(manifest.reviewedContent.sha256 ?? '')
   ) fail('invalid_content_manifest');
+  if (manifest.glossToTurkish !== undefined && (!isRecord(manifest.glossToTurkish)
+      || !isText(manifest.glossToTurkish.path)
+      || !SHA256_PATTERN.test(manifest.glossToTurkish.sha256 ?? ''))) fail('invalid_content_manifest');
   const { contentHash, ...hashableManifest } = manifest;
   if (await hashCanonicalJson(hashableManifest) !== contentHash) fail('content_manifest_hash_mismatch');
   validateAssetManifest(manifest.mediaAssets);
@@ -327,16 +348,26 @@ export async function loadTidTranslationResources({
   if (reviewedContentHash !== manifest.reviewedContent.sha256) fail('content_hash_mismatch');
   const entries = validateLoadedBundle(reviewedContent, manifest);
   const templates = validateTemplates(manifest.templates, entries);
+  let glossToTurkish = null;
+  let glossToTurkishHash = null;
+  if (manifest.glossToTurkish) {
+    const { data: bundle } = await fetchJson(manifest.glossToTurkish.path, fetcher, pageOrigin);
+    glossToTurkishHash = await hashCanonicalJson(bundle);
+    if (glossToTurkishHash !== manifest.glossToTurkish.sha256) fail('gloss_to_turkish_hash_mismatch');
+    glossToTurkish = validateGlossToTurkishBundle(bundle, manifest);
+  }
 
   return {
     contentVersion: manifest.contentVersion,
     contentHash,
     reviewedContentHash,
+    glossToTurkishHash,
     origin: pageOrigin,
     lexicon: { entries: manifest.lexicon },
     entries,
     templates,
     mediaManifest: manifest.mediaAssets,
+    glossToTurkish,
   };
 }
 

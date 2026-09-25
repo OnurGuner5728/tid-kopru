@@ -1,6 +1,6 @@
 importScripts('./sw-policy.js');
 
-const CACHE_NAME = 'tid-kopru-v3';
+const CACHE_NAME = 'tid-kopru-v4';
 const APP_SHELL_ASSETS = [
   './',
   './index.html',
@@ -11,6 +11,10 @@ const APP_SHELL_ASSETS = [
   './tid-media-player.mjs',
   './tid-output-ui.mjs',
   './tid-transfer.mjs',
+  './tid-to-turkish.mjs',
+  './sign-recognition.mjs',
+  './sign-recognition-worker.js',
+  './onnx-runtime-loader.mjs',
   './turkish-morphology.mjs',
   './sw-policy.js',
   './manifest.webmanifest',
@@ -18,6 +22,8 @@ const APP_SHELL_ASSETS = [
   './icons/maskable.svg',
   './assets/tid/content-manifest.json',
   './assets/tid/reviewed-content.json',
+  './assets/tid/gloss-to-turkish.json',
+  './assets/tid/sentence-model-manifest.json',
   './assets/tid/morphology-rules.json',
   './vendor/three/three.module.js',
   './vendor/three/addons/loaders/GLTFLoader.js',
@@ -47,8 +53,27 @@ self.addEventListener('fetch', (event) => {
   const requestUrl = new URL(event.request.url);
   if (requestUrl.origin !== self.location.origin) return;
 
+  if (requestUrl.pathname.startsWith('/vendor/onnxruntime-web/') || requestUrl.pathname.startsWith('/assets/tid/camera/')) {
+    event.respondWith((async () => {
+      const shellCache = await caches.open(CACHE_NAME);
+      const manifestUrl = new URL('./assets/tid/sentence-model-manifest.json', self.location.href).href;
+      let response = await shellCache.match(manifestUrl);
+      if (!response) response = await fetch(manifestUrl);
+      let manifest;
+      try { manifest = await response.json(); } catch { return new Response('Model listesi okunamadı.', { status: 503 }); }
+      return self.TidKopruCachePolicy.getCameraModelResponse({
+        request: event.request,
+        origin: self.location.origin,
+        manifest,
+        cacheStorage: caches,
+        fetcher: fetch,
+      });
+    })());
+    return;
+  }
+
   if (requestUrl.pathname.startsWith('/assets/tid/')
-    && !['/assets/tid/content-manifest.json', '/assets/tid/reviewed-content.json', '/assets/tid/morphology-rules.json'].includes(requestUrl.pathname)) {
+    && !['/assets/tid/content-manifest.json', '/assets/tid/reviewed-content.json', '/assets/tid/gloss-to-turkish.json', '/assets/tid/sentence-model-manifest.json', '/assets/tid/morphology-rules.json'].includes(requestUrl.pathname)) {
     event.respondWith((async () => {
       const shellCache = await caches.open(CACHE_NAME);
       const manifestUrl = new URL('./assets/tid/content-manifest.json', self.location.href).href;

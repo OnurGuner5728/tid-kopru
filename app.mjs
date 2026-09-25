@@ -2,6 +2,9 @@ import { SignAvatar } from './avatar.mjs';
 import { loadTidTranslationResources, translateTurkishToTid } from './tid-transfer.mjs';
 import { createTidMediaPlayer } from './tid-media-player.mjs';
 import { createTidOutputController } from './tid-output-ui.mjs';
+import { SignRecognitionClient } from './sign-recognition.mjs';
+import { downloadCameraModel } from './onnx-runtime-loader.mjs';
+import { translateTidGlossToTurkish } from './tid-transfer.mjs';
 
 const elements = {
   networkDot: document.querySelector('#network-dot'),
@@ -33,7 +36,17 @@ const elements = {
   tidVideo: document.querySelector('#tid-video'),
   avatarStage: document.querySelector('#avatar-stage'),
   avatarLoader: document.querySelector('#avatar-loader'),
-  avatarStatus: document.querySelector('#avatar-status')
+  avatarStatus: document.querySelector('#avatar-status'),
+  cameraPreview: document.querySelector('#camera-preview'),
+  cameraStatus: document.querySelector('#camera-status'),
+  cameraProgress: document.querySelector('#camera-progress'),
+  cameraDownload: document.querySelector('#camera-model-download'),
+  cameraStart: document.querySelector('#camera-start'),
+  cameraFinish: document.querySelector('#camera-finish'),
+  cameraStop: document.querySelector('#camera-stop'),
+  cameraCandidateText: document.querySelector('#camera-candidate-text'),
+  cameraEdit: document.querySelector('#camera-edit'),
+  cameraConfirm: document.querySelector('#camera-confirm')
 };
 
 let recognition;
@@ -45,6 +58,10 @@ let translationResources;
 let translationPlayer;
 let tidOutput;
 let pwaStatusMessage = '';
+let cameraManifest = null;
+let cameraClient = null;
+let cameraInstalled = false;
+let cameraCandidateReady = false;
 
 function updateNetworkStatus() {
   const online = navigator.onLine;
@@ -224,11 +241,182 @@ async function loadTranslationResources({ retryCurrentText = false } = {}) {
   tidOutput?.setLoading('Onaylı TİD içerik listesi yükleniyor…');
   try {
     translationResources = await loadTidTranslationResources();
+    refreshCameraControls();
     tidOutput?.setIdle();
     if (retryCurrentText && elements.heardText.value.trim()) await tidOutput?.confirm();
   } catch {
     translationResources = null;
+    refreshCameraControls();
     tidOutput?.setError('Onaylı TİD içerik listesi yüklenemedi. Bağlantıyı kontrol edip yeniden deneyin; Türkçe metniniz düzenlenebilir durumda.');
+  }
+}
+
+function canUseCameraTranslations() {
+  const reverse = translationResources?.glossToTurkish;
+  if (!cameraManifest?.available || !reverse || reverse.contentVersion !== cameraManifest.contentVersion
+      || !Array.isArray(reverse.vocabulary) || reverse.vocabulary.length === 0) return false;
+  return cameraManifest.vocabulary.every((gloss) => reverse.vocabulary.includes(gloss));
+}
+
+function refreshCameraControls() {
+  const modelAvailable = cameraManifest?.available === true;
+  const contentAvailable = canUseCameraTranslations();
+  elements.cameraDownload.disabled = !modelAvailable || !contentAvailable || cameraInstalled;
+  elements.cameraStart.disabled = !modelAvailable || !contentAvailable || !cameraInstalled;
+  if (modelAvailable && !contentAvailable) {
+    elements.cameraStatus.textContent = 'Bu model için iki uzman tarafından onaylanmış gloss→Türkçe eşleşmesi bulunmuyor. Çeviri için tahmin üretilmeyecek.';
+  }
+}
+
+function renderCameraCandidate(result) {
+  cameraCandidateReady = false;
+  elements.cameraCandidateText.value = '';
+  elements.cameraCandidateText.disabled = true;
+  elements.cameraEdit.disabled = true;
+  elements.cameraConfirm.disabled = true;
+  if (result.status !== 'ready') {
+    elements.cameraStatus.textContent = 'Bu işaret dizisi için onaylı bir Türkçe karşılık bulunamadı. Yanıt alanı değiştirilmedi.';
+    return;
+  }
+  elements.cameraCandidateText.value = result.text;
+  elements.cameraCandidateText.disabled = true;
+  elements.cameraEdit.disabled = false;
+  elements.cameraConfirm.disabled = false;
+  cameraCandidateReady = true;
+  elements.cameraStatus.textContent = 'Türkçe aday hazır. Gerekirse düzeltin; yanıt alanına yalnızca onayınızla aktarılır.';
+}
+
+function showCameraRecognitionCandidate(candidate) {
+  const reverse = translationResources?.glossToTurkish;
+  if (!reverse || reverse.contentVersion !== candidate.contentVersion) {
+    renderCameraCandidate({ status: 'unsupported' });
+    return;
+  }
+  renderCameraCandidate(translateTidGlossToTurkish(candidate.glossEvents, reverse));
+}
+
+async function initializeCameraTools() {
+  elements.cameraDownload.addEventListener('click', async () => {
+    if (!cameraManifest?.available || !canUseCameraTranslations() || cameraClient) return;
+    elements.cameraDownload.disabled = true;
+    elements.cameraStatus.textContent = 'Model ve çalışma zamanı hash doğrulaması yapılıyor…';
+    try {
+      await downloadCameraModel(cameraManifest, {
+        origin: location.origin,
+        onProgress: ({ percent, path }) => {
+          elements.cameraProgress.textContent = `${percent}% doğrulandı · ${path.split('/').at(-1)}`;
+        },
+      });
+      cameraClient = new SignRecognitionClient({
+        origin: location.origin,
+        mediaDevices: navigator.mediaDevices,
+        videoElement: elements.cameraPreview,
+        pageTarget: window,
+      });
+      await cameraClient.load({
+        manifest: cameraManifest,
+        onProgress: ({ percent }) => { elements.cameraProgress.textContent = `${percent}% doğrulandı`; },
+      });
+      cameraInstalled = true;
+      elements.cameraStatus.textContent = `Model ${cameraManifest.modelVersion} doğrulandı. Kamerayı yalnızca aşağıdaki düğmeyle açabilirsiniz.`;
+      refreshCameraControls();
+    } catch {
+      await cameraClient?.dispose();
+      cameraClient = null;
+      cameraInstalled = false;
+      elements.cameraStatus.textContent = 'Model kurulamadı veya doğrulanamadı. Kamera kapalı kaldı; bağlantı ve depolama alanını kontrol edip yeniden deneyin.';
+      elements.cameraDownload.disabled = false;
+    }
+  });
+
+  elements.cameraStart.addEventListener('click', async () => {
+    if (!cameraClient || !cameraInstalled || !canUseCameraTranslations()) return;
+    cameraCandidateReady = false;
+    elements.cameraCandidateText.value = '';
+    elements.cameraCandidateText.disabled = true;
+    elements.cameraEdit.disabled = true;
+    elements.cameraConfirm.disabled = true;
+    elements.cameraStart.disabled = true;
+    elements.cameraStatus.textContent = 'Kamera izni isteniyor. Görüntü yalnızca yerel çalışma hattına aktarılır; MediaPipe ölçüm bildirimi yukarıdadır.';
+    try {
+      await cameraClient.startUtterance({
+        userInitiated: true,
+        onCandidate: showCameraRecognitionCandidate,
+        onRejected: () => {
+          renderCameraCandidate({ status: 'unsupported' });
+        },
+        onError: () => {
+          const failedClient = cameraClient;
+          cameraClient = null;
+          cameraInstalled = false;
+          void failedClient?.dispose();
+          elements.cameraStatus.textContent = 'Tanıma durdu. Kamera bağlantısı kapatıldı; yanıt alanı değiştirilmedi.';
+          elements.cameraFinish.disabled = true;
+          elements.cameraStop.disabled = true;
+          elements.cameraPreview.hidden = true;
+          refreshCameraControls();
+        },
+      });
+      elements.cameraPreview.hidden = false;
+      elements.cameraFinish.disabled = false;
+      elements.cameraStop.disabled = false;
+      elements.cameraStatus.textContent = 'İşaret ederken “İşareti bitir” düğmesine basın; dilediğiniz an Durdur seçeneğini kullanabilirsiniz.';
+    } catch {
+      elements.cameraStatus.textContent = 'Kamera açılamadı veya izin verilmedi. Hiçbir metin yanıt alanına aktarılmadı.';
+      elements.cameraPreview.hidden = true;
+      refreshCameraControls();
+    }
+  });
+
+  elements.cameraFinish.addEventListener('click', async () => {
+    if (!cameraClient) return;
+    elements.cameraFinish.disabled = true;
+    elements.cameraStatus.textContent = 'İşaret dizisi yerel olarak değerlendiriliyor…';
+    await cameraClient.stopCapture();
+    elements.cameraPreview.hidden = true;
+    elements.cameraStop.disabled = true;
+    refreshCameraControls();
+  });
+
+  elements.cameraStop.addEventListener('click', async () => {
+    await cameraClient?.abortCapture();
+    elements.cameraPreview.hidden = true;
+    elements.cameraFinish.disabled = true;
+    elements.cameraStop.disabled = true;
+    elements.cameraStatus.textContent = 'Kamera durduruldu. Yanıt alanı değiştirilmedi.';
+    refreshCameraControls();
+  });
+
+  elements.cameraEdit.addEventListener('click', () => {
+    if (!cameraCandidateReady) return;
+    elements.cameraCandidateText.disabled = false;
+    elements.cameraCandidateText.focus();
+    elements.cameraStatus.textContent = 'Adayı düzeltebilirsiniz. Değişiklik yanıt alanına yalnızca onayla aktarılır.';
+  });
+
+  elements.cameraConfirm.addEventListener('click', () => {
+    const text = elements.cameraCandidateText.value.trim();
+    if (!cameraCandidateReady || !text) return;
+    elements.replyText.value = text;
+    elements.replyText.dispatchEvent(new Event('input', { bubbles: true }));
+    elements.replyText.focus();
+    elements.cameraStatus.textContent = 'Onayladığınız metin yanıt alanına aktarıldı. Seslendirmek için “Seslendir” düğmesine basın.';
+  });
+
+  try {
+    const manifestUrl = new URL('./assets/tid/sentence-model-manifest.json', location.href);
+    if (manifestUrl.origin !== location.origin) throw new Error('unsafe_model_manifest');
+    const response = await fetch(manifestUrl, { credentials: 'same-origin' });
+    if (!response.ok) throw new Error('camera_manifest_unavailable');
+    const value = await response.json();
+    if (value?.schemaVersion !== 1 || typeof value.available !== 'boolean') throw new Error('invalid_camera_manifest');
+    cameraManifest = value;
+    if (!value.available) {
+      elements.cameraStatus.textContent = 'Cümle modeli ve lisanslı yerel çalışma zamanı henüz dağıtım paketinde yok. Kamera açılmaz; hazır olduğunda kullanıcı ayrıca indirip başlatır.';
+    }
+    refreshCameraControls();
+  } catch {
+    elements.cameraStatus.textContent = 'Kamera model listesi doğrulanamadı. Kamera kapalı kaldı.';
   }
 }
 
@@ -351,6 +539,7 @@ function initializePwa() {
 
 initializeTidOutput();
 void loadTranslationResources();
+void initializeCameraTools();
 elements.avatarRetry.addEventListener('click', loadAvatar);
 
 initializePwa();

@@ -33,7 +33,7 @@
     <p class="pwa-status" id="pwa-status" role="status" aria-live="polite" hidden></p>
     <section class="intro" id="top" aria-labelledby="intro-title">
       <div>
-        <p class="eyebrow">Ücretsiz · Hesapsız · Kayıt tutmaz</p>
+        <p class="eyebrow">Ücretsiz · Hesapsız · Onay sizde</p>
         <h1 id="intro-title">Aynı masada,<br><em>daha anlaşılır</em> iletişim.</h1>
         <p class="intro-copy">Türkçe metni yazın ya da konuşun; son hâlini gözden geçirip onaylayarak TİD karşılığını açın.</p>
       </div>
@@ -91,6 +91,37 @@
       </article>
     </section>
 
+    <section class="camera-card tool-card" aria-labelledby="camera-title">
+      <div class="card-heading">
+        <span class="step-number">03</span>
+        <div><p class="kicker">TİD kullanan kişiden</p><h2 id="camera-title">İşareti Türkçe adaya çevir</h2></div>
+      </div>
+      <p class="card-description">Model hazır olduğunda kameradan alınan işaret dizisi önce yalnızca gözden geçirmeniz için Türkçe aday olur. Yanıt alanına ancak siz onaylarsanız aktarılır.</p>
+      <p class="camera-notice"><strong>Gizlilik ve ölçüm bilgisi:</strong> MediaPipe görüntüyü cihazda işler; kullanım/performance ölçümü ve sistem ortamı verileri Google'a gönderilebilir. Gerçek katılımcıdan kayıt almadan önce bu açıklama aydınlatma ve onam metninde yer almalıdır. Araç hiçbir ağ bağlantısı kurmadığını iddia etmez. Kamera bu sürümde model bulunmadığı için kapalıdır.</p>
+      <div class="camera-layout">
+        <div>
+          <video class="camera-preview" id="camera-preview" playsinline muted hidden aria-label="İşaret tanıma kamera görüntüsü"></video>
+          <p class="inline-status" id="camera-status" role="status" aria-live="polite">Cümle modeli ve lisanslı yerel çalışma zamanı henüz dağıtım paketinde yok. Kamera açılmaz.</p>
+          <div class="button-row camera-actions">
+            <button class="button secondary" id="camera-model-download" type="button" disabled>Modeli indir</button>
+            <button class="button primary" id="camera-start" type="button" disabled>Kamerayı aç</button>
+            <button class="button lime" id="camera-finish" type="button" disabled>İşareti bitir</button>
+            <button class="button secondary" id="camera-stop" type="button" disabled>Durdur</button>
+          </div>
+          <p class="translation-progress" id="camera-progress" aria-live="polite"></p>
+        </div>
+        <div class="camera-candidate" aria-labelledby="camera-candidate-title">
+          <h3 id="camera-candidate-title">Türkçe aday — onayınız bekleniyor</h3>
+          <label class="field-label" for="camera-candidate-text">Gerekirse düzeltin</label>
+          <textarea id="camera-candidate-text" rows="3" maxlength="800" disabled placeholder="Onaylı bir eşleşme bulunursa aday burada görünür."></textarea>
+          <div class="button-row">
+            <button class="button secondary" id="camera-edit" type="button" disabled>Düzelt</button>
+            <button class="button coral" id="camera-confirm" type="button" disabled>Yanıt alanına aktar</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <section class="sign-section" aria-labelledby="sign-title">
       <div class="sign-copy">
         <p class="eyebrow light">Uzman onaylı içerik</p>
@@ -127,7 +158,7 @@
     <section class="limits" aria-labelledby="limits-title">
       <div><p class="eyebrow">Bu sürüm ne yapmaz?</p><h2 id="limits-title">Sınırları açıkça biliyoruz.</h2></div>
       <ul>
-        <li><strong>Kamera tanıma yok.</strong><span>Görüntüden otomatik TİD→Türkçe çıkarımı uygulanmadı.</span></li>
+        <li><strong>Kamera kapalı.</strong><span>Dağıtımda doğrulanmış cümle modeli ve lisanslı yerel çalışma zamanı bulunmadığından TİD→Türkçe tanıma başlatılamaz.</span></li>
         <li><strong>Tam çeviri değil.</strong><span>Kayıtlı tekil işaretler, Türkçe sözcük sırasıyla gösterilir.</span></li>
         <li><strong>Acil durum aracı değil.</strong><span>Medikal veya hayati kararlar için tek iletişim kanalı olarak kullanılmamalıdır.</span></li>
       </ul>
@@ -136,7 +167,7 @@
 
   <footer>
     <div class="brand footer-brand"><span class="brand-mark" aria-hidden="true">TİD</span><span><strong>TİD Köprü</strong><small>İletişimi kolaylaştıran açık prototip</small></span></div>
-    <p>Hesap yok · Sunucu yok · Kayıt yok</p>
+    <p>Hesap yok · Kamera modeli bu sürümde kapalı · TİD içeriği uzman onayına bağlı</p>
     <p>Avatar kodu ve pozları: SignBridge, MIT. Karakter varlığının yayın hakkı ayrıca doğrulanmalıdır.</p>
   </footer>
 
