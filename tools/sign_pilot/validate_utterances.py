@@ -162,12 +162,18 @@ def validate_event_bounds(event: object, frames: object) -> list[str]:
     ):
         _add(errors, "invalid_gloss_timing")
 
-    if event.get("dominantHand") not in ("left", "right", "both", "none"):
+    dominant_hand = event.get("dominantHand")
+    channel = event.get("channel")
+    if dominant_hand not in ("left", "right", "both", "none"):
         _add(errors, "invalid_gloss_event")
-    if event.get("channel") not in ("manual", "nonManual"):
+    if channel not in ("manual", "nonManual"):
         _add(errors, "invalid_gloss_event")
     non_manual = event.get("nonManual")
     if not isinstance(non_manual, list) or any(not isinstance(code, str) or not _CODE.fullmatch(code) for code in non_manual):
+        _add(errors, "invalid_gloss_event")
+    elif (channel == "manual" and dominant_hand == "none") or (
+        channel == "nonManual" and (dominant_hand != "none" or not non_manual)
+    ):
         _add(errors, "invalid_gloss_event")
     gloss_id = event.get("glossId")
     if not isinstance(gloss_id, str) or not _CODE.fullmatch(gloss_id):
@@ -242,7 +248,6 @@ def validate_utterance(record: object, signers: Iterable[str], approved_glosses:
         _add(errors, "invalid_conditions")
 
     frames = record.get("frames")
-    timestamps = []
     if not isinstance(frames, list) or not frames:
         _add(errors, "invalid_frames")
         frames = []
@@ -253,7 +258,6 @@ def validate_utterance(record: object, signers: Iterable[str], approved_glosses:
             if timestamp <= previous:
                 _add(errors, "invalid_timestamp")
             previous = timestamp
-            timestamps.append(timestamp)
 
     events = record.get("glossEvents")
     if not isinstance(events, list) or not events:
@@ -289,8 +293,10 @@ def validate_utterances(
         return ["invalid_records"]
     errors: list[str] = []
     seen_ids: set[str] = set()
+    signer_codes = _codes(signers)
+    approved_codes = _codes(approved_glosses)
     for record in records:
-        for code in validate_utterance(record, signers, approved_glosses):
+        for code in validate_utterance(record, signer_codes, approved_codes):
             _add(errors, code)
         if isinstance(record, Mapping):
             utterance_id = record.get("utteranceId")

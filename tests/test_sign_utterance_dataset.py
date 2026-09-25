@@ -108,6 +108,19 @@ class ValidateUtterancesTests(unittest.TestCase):
         errors = validate_utterances([record], SIGNERS, GLOSSES)
         self.assertIn("unauthorized_overlap", errors)
 
+    def test_malformed_event_values_are_rejected_without_crashing(self):
+        malformed = event()
+        malformed["channel"] = []
+        malformed["dominantHand"] = {}
+        errors = validate_utterances([utterance_record(glossEvents=[malformed])], SIGNERS, GLOSSES)
+        self.assertIn("invalid_gloss_event", errors)
+
+    def test_nonmanual_event_requires_a_nonmanual_marker(self):
+        errors = validate_utterances([
+            utterance_record(glossEvents=[event("BROW_RAISE", channel="nonManual")])
+        ], SIGNERS, GLOSSES)
+        self.assertIn("invalid_gloss_event", errors)
+
     def test_nonfinite_landmark_is_rejected(self):
         bad_frame = frame(0)
         bad_frame["pose"][0] = float("nan")

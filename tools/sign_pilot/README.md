@@ -52,3 +52,19 @@ Gerçek kayıt öncesinde TİD danışmanı etiket sözlüğünü, varyantları 
 Ham görüntü bu aracın varsayılan çıktısı değildir. Eğitim amacıyla ham video ancak imzalı izin formu bu amacı ve gerekli saklama süresini açıkça kapsıyorsa, sınırlı erişimli şifreli depoda tutulabilir; Git'e, herkese açık pakete veya service worker önbelleğine girmez. Bu plan için TİD danışmanı, gerçek katılımcı izni ve hedef Android ölçümü mevcut değildir; örnekler sentetik kalır ve bir ürün modeli yayımlanmaz.
 
 Şema testleri: `python -m unittest discover -s tests -p test_sign_utterance_dataset.py -v`. Bu testler yalnızca yapay landmark/gloss fikstürleri kullanır; kamera veya katılımcı verisi açmaz.
+
+### Yerel tek-utterance kayıt aracı
+
+Yalnızca TİD danışmanının imzaladığı schema 2.0 çalışma manifestosu ile hash'leri bu manifestoda sabitlenmiş ve aynı kaynaktan sunulan MediaPipe runtime/model/WASM dosyaları sağlandığında aracı yerel açın:
+
+```powershell
+python tools/serve.py --port 8120 --directory tools/sign_pilot
+```
+
+`http://127.0.0.1:8120/utterance-capture.html` adresini açın. Manifestolar örnek veya `approved: false` ise, eksikse ya da hash/ön işleme kimlikleri eşleşmiyorsa kamera düğmesi devre dışı kalmalı veya model doğrulamasında hata vermelidir. Yazılım QA'da kamera izni açmayın ve gerçek katılımcı kaydetmeyin. Mevcut depoda onaylı cümle manifestosu ve MediaPipe çalışma varlıkları bulunmadığından canlı kamera akışı bu ortamda doğrulanmadı.
+
+Hazır olduğunda araştırmacı önce iki yerel JSON dosyasını seçer, izin/onam açıklamasını kurum metniyle karşılaştırır, kayıt kodu ve koşulları seçer, sonra açıkça kamera düğmesine basar. Durdurma, hata, gecikmiş izin yanıtı, sayfadan çıkış ve silme tüm kamera izlerini kapatır; oturum depoya yazılmaz. Gloss zaman çizelgesi aynı başlangıca göre milisaniyeyle verilir ve export öncesi Python validator ile eşdeğer taramadan geçer. Normal JSONL dışa aktarımı video veya blob içeremez.
+
+Ham araştırma videosu bu arayüzde kaydedilmez. Yalnızca ayrı ham-video iznini ayrı kodla doğrulamış özel bir araştırma entegrasyonu `rawVideoConsentVerified: true`, manifestteki `rawVideoConsentCode`, kullanıcı tarafından seçilen korumalı klasör ve ayrı `exportPrivateResearchVideo()` çağrısını sağlayabilir. Klasörün repo dışında, şifreli ve erişimi sınırlı olduğunu araştırmacı ayrıca doğrulamalıdır; JSONL içine video yolu yazılmaz. İzin, retention/silme kaydı veya medya hakkı bulunmuyorsa bu özellik kullanılmaz. MediaPipe ölçüm telemetrisi Google'a gidebilir; ağın bütünüyle yerel olduğu iddia edilmez.
+
+Yapay kamera/landmarker testi: `node --test tests/sign-utterance-capture.test.mjs`. Bu test sahte kamera izleri kullanır ve bilgisayar kamerasını açmaz.
