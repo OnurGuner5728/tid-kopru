@@ -1,0 +1,203 @@
+{
+  "schemaVersion": 1,
+  "locale": "tr-TR",
+  "sentenceTerminators": [".", "!", "?", "…"],
+  "vowelHarmony": {
+    "a": ["a", "ı", "o", "u"],
+    "e": ["e", "i", "ö", "ü"],
+    "ı": ["a", "ı"],
+    "i": ["e", "i"],
+    "u": ["o", "u"],
+    "ü": ["ö", "ü"]
+  },
+  "questionForms": {
+    "mi": { "question": true },
+    "mı": { "question": true },
+    "mu": { "question": true },
+    "mü": { "question": true },
+    "misin": { "question": true, "predicatePerson": "2sg" },
+    "mısın": { "question": true, "predicatePerson": "2sg" },
+    "musun": { "question": true, "predicatePerson": "2sg" },
+    "müsün": { "question": true, "predicatePerson": "2sg" },
+    "miyim": { "question": true, "predicatePerson": "1sg" },
+    "mıyım": { "question": true, "predicatePerson": "1sg" },
+    "muyum": { "question": true, "predicatePerson": "1sg" },
+    "müyüm": { "question": true, "predicatePerson": "1sg" },
+    "misiniz": { "question": true, "predicatePerson": "2pl" },
+    "mısınız": { "question": true, "predicatePerson": "2pl" },
+    "musunuz": { "question": true, "predicatePerson": "2pl" },
+    "müsünüz": { "question": true, "predicatePerson": "2pl" }
+  },
+  "suffixPatterns": [
+    {
+      "suffixes": ["lar", "ler"],
+      "partOfSpeech": ["noun"],
+      "features": { "number": "plural" }
+    },
+    {
+      "suffixes": ["ım", "im", "um", "üm"],
+      "partOfSpeech": ["noun"],
+      "stemEnding": "consonant",
+      "features": { "possessivePerson": "1sg" }
+    },
+    {
+      "suffixes": ["m"],
+      "partOfSpeech": ["noun"],
+      "stemEnding": "vowel",
+      "features": { "possessivePerson": "1sg" }
+    },
+    {
+      "suffixes": ["ın", "in", "un", "ün"],
+      "partOfSpeech": ["noun"],
+      "stemEnding": "consonant",
+      "features": { "possessivePerson": "2sg" }
+    },
+    {
+      "suffixes": ["n"],
+      "partOfSpeech": ["noun"],
+      "stemEnding": "vowel",
+      "features": { "possessivePerson": "2sg" }
+    },
+    {
+      "suffixes": ["ı", "i", "u", "ü"],
+      "partOfSpeech": ["noun"],
+      "stemEnding": "consonant",
+      "features": { "possessivePerson": "3sg" }
+    },
+    {
+      "suffixes": ["sı", "si", "su", "sü"],
+      "partOfSpeech": ["noun"],
+      "stemEnding": "vowel",
+      "features": { "possessivePerson": "3sg" }
+    },
+    {
+      "suffixes": ["ımız", "imiz", "umuz", "ümüz"],
+      "partOfSpeech": ["noun"],
+      "stemEnding": "consonant",
+      "features": { "possessivePerson": "1pl" }
+    },
+    {
+      "suffixes": ["mız", "miz", "muz", "müz"],
+      "partOfSpeech": ["noun"],
+      "stemEnding": "vowel",
+      "features": { "possessivePerson": "1pl" }
+    },
+    {
+      "suffixes": ["ınız", "iniz", "unuz", "ünüz"],
+      "partOfSpeech": ["noun"],
+      "stemEnding": "consonant",
+      "features": { "possessivePerson": "2pl" }
+    },
+    {
+      "suffixes": ["nız", "niz", "nuz", "nüz"],
+      "partOfSpeech": ["noun"],
+      "stemEnding": "vowel",
+      "features": { "possessivePerson": "2pl" }
+    },
+    {
+      "suffixes": ["ı", "i", "u", "ü"],
+      "partOfSpeech": ["noun"],
+      "stemEnding": "consonant",
+      "features": { "case": "accusative" }
+    },
+    {
+      "suffixes": ["yı", "yi", "yu", "yü"],
+      "partOfSpeech": ["noun"],
+      "stemEnding": "vowel",
+      "features": { "case": "accusative" }
+    },
+    {
+      "suffixes": ["a", "e"],
+      "partOfSpeech": ["noun"],
+      "stemEnding": "consonant",
+      "features": { "case": "dative" }
+    },
+    {
+      "suffixes": ["ya", "ye"],
+      "partOfSpeech": ["noun"],
+      "stemEnding": "vowel",
+      "features": { "case": "dative" }
+    },
+    {
+      "suffixes": ["da", "de", "ta", "te"],
+      "partOfSpeech": ["noun"],
+      "features": { "case": "locative" }
+    },
+    {
+      "suffixes": ["dan", "den", "tan", "ten"],
+      "partOfSpeech": ["noun"],
+      "features": { "case": "ablative" }
+    },
+    {
+      "suffixes": ["ın", "in", "un", "ün"],
+      "partOfSpeech": ["noun"],
+      "stemEnding": "consonant",
+      "features": { "case": "genitive" }
+    },
+    {
+      "suffixes": ["nın", "nin", "nun", "nün"],
+      "partOfSpeech": ["noun"],
+      "stemEnding": "vowel",
+      "features": { "case": "genitive" }
+    },
+    {
+      "suffixes": ["ım", "im", "um", "üm"],
+      "partOfSpeech": ["adjective"],
+      "stemEnding": "consonant",
+      "features": { "predicatePerson": "1sg" }
+    },
+    {
+      "suffixes": ["yım", "yim", "yum", "yüm"],
+      "partOfSpeech": ["adjective"],
+      "stemEnding": "vowel",
+      "features": { "predicatePerson": "1sg" }
+    },
+    {
+      "suffixes": ["sın", "sin", "sun", "sün"],
+      "partOfSpeech": ["adjective"],
+      "features": { "predicatePerson": "2sg" }
+    },
+    {
+      "suffixes": ["ız", "iz", "uz", "üz"],
+      "partOfSpeech": ["adjective"],
+      "stemEnding": "consonant",
+      "features": { "predicatePerson": "1pl" }
+    },
+    {
+      "suffixes": ["yız", "yiz", "yuz", "yüz"],
+      "partOfSpeech": ["adjective"],
+      "stemEnding": "vowel",
+      "features": { "predicatePerson": "1pl" }
+    },
+    {
+      "suffixes": ["sınız", "siniz", "sunuz", "sünüz"],
+      "partOfSpeech": ["adjective"],
+      "features": { "predicatePerson": "2pl" }
+    },
+    {
+      "suffixes": ["ma", "me"],
+      "partOfSpeech": ["verb"],
+      "features": { "polarity": "negative", "mood": "imperative", "predicatePerson": "2sg" }
+    },
+    {
+      "suffixes": ["madı", "medi"],
+      "partOfSpeech": ["verb"],
+      "features": { "polarity": "negative", "tense": "past", "predicatePerson": "3sg" }
+    },
+    {
+      "suffixes": ["madım", "medim"],
+      "partOfSpeech": ["verb"],
+      "features": { "polarity": "negative", "tense": "past", "predicatePerson": "1sg" }
+    },
+    {
+      "suffixes": ["madın", "medin"],
+      "partOfSpeech": ["verb"],
+      "features": { "polarity": "negative", "tense": "past", "predicatePerson": "2sg" }
+    },
+    {
+      "suffixes": ["mıyor", "miyor", "muyor", "müyor"],
+      "partOfSpeech": ["verb"],
+      "features": { "polarity": "negative", "tense": "progressive", "predicatePerson": "3sg" }
+    }
+  ]
+}
