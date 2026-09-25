@@ -72,3 +72,38 @@ test('only old app caches are deleted during activation', () => {
   assert.equal(shouldDeleteCache('tid-kopru-v2', 'tid-kopru-v2'), false);
   assert.equal(shouldDeleteCache('unrelated-site-cache', 'tid-kopru-v2'), false);
 });
+
+const workerSource = await readFile(new URL('../public/service-worker.js', import.meta.url), 'utf8');
+
+test('app shell excludes large avatar downloads and includes its runtime dependencies', () => {
+  const match = workerSource.match(/const APP_SHELL_ASSETS = \[([\s\S]*?)\];/u);
+  assert.ok(match, 'service worker should define APP_SHELL_ASSETS');
+  const assets = [...match[1].matchAll(/'([^']+)'/gu)].map((entry) => entry[1]);
+
+  assert.equal(assets.includes('./assets/avatar/rain.glb'), false);
+  assert.equal(assets.includes('./assets/avatar/saved-poses.json'), false);
+  for (const asset of [
+    './', './index.html', './styles.css', './app.mjs', './avatar.mjs', './matcher.mjs',
+    './sw-policy.js', './manifest.webmanifest', './icons/icon.svg', './icons/maskable.svg',
+    './vendor/three/three.module.js', './vendor/three/addons/loaders/GLTFLoader.js',
+    './vendor/three/addons/controls/OrbitControls.js'
+  ]) {
+    assert.ok(assets.includes(asset), `missing app-shell asset: ${asset}`);
+  }
+});
+
+test('app shell contains only the current release cache prefix policy', () => {
+  assert.match(workerSource, /const CACHE_NAME = 'tid-kopru-v2'/u);
+  assert.match(workerSource, /shouldDeleteCache\(name, CACHE_NAME\)/u);
+});
+
+const appHtml = await readFile(new URL('../public/index.html', import.meta.url), 'utf8');
+const appSource = await readFile(new URL('../public/app.mjs', import.meta.url), 'utf8');
+
+test('service-worker registration reports secure-install and offline-first-use requirements', () => {
+  assert.match(appHtml, /id="pwa-status"[^>]*role="status"/u);
+  assert.match(appSource, /navigator\.serviceWorker\.register\('\.\/service-worker\.js'\)\s*\.then\(/u);
+  assert.match(appSource, /navigator\.serviceWorker\.register\('\.\/service-worker\.js'\)[\s\S]*?\.catch\(/u);
+  assert.match(appSource, /ilk çevrimdışı kullanım için avatarı bir kez/u);
+});
+
