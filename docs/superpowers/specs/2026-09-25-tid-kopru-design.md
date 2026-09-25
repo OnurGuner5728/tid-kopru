@@ -1,7 +1,7 @@
 # TİD Köprü — Ürün Tasarımı ve Tamamlama Kriterleri
 
 **Tarih:** 25 Eylül 2026  
-**Durum:** İnceleme bekliyor  
+**Durum:** Onaylandı  
 **Amaç:** Var olan PWA'yı kullanılabilir bir sürüme tamamlamak ve TİD kamera tanımayı yalnızca hakları onaylı veri ve ölçülmüş sonuçlarla ürüne eklemek.
 
 ## Ürün amacı
