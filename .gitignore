@@ -1,2 +1,6 @@
 __pycache__/
 *.py[cod]
+/tools/offline_speech/downloads/
+/tools/offline_speech/models/
+/tools/offline_speech/recordings/
+/tools/offline_speech/probe/model.tar.gz

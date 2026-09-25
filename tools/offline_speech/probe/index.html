@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#123b36">
+    <title>Yerel Türkçe konuşma denemesi</title>
+    <style>
+      :root { color-scheme: light; font: 16px/1.5 system-ui, sans-serif; background: #f2f5f2; color: #163b36; }
+      body { max-width: 48rem; margin: 0 auto; padding: 1.5rem; }
+      main { background: white; border-radius: 1rem; padding: 1.5rem; box-shadow: 0 0.5rem 2rem #123b361a; }
+      button { min-height: 48px; margin: 0.25rem; padding: 0.6rem 1rem; border: 0; border-radius: 0.6rem; background: #d0f05c; color: #123b36; font: inherit; font-weight: 700; }
+      button:disabled { opacity: 0.55; }
+      button:focus-visible { outline: 3px solid #167668; outline-offset: 3px; }
+      progress { width: 100%; height: 1rem; accent-color: #167668; }
+      .status, .notice { padding: 0.8rem; border-radius: 0.6rem; background: #eef5f2; }
+      .transcript { min-height: 3rem; padding: 0.8rem; border: 1px solid #c8d5d0; border-radius: 0.6rem; overflow-wrap: anywhere; }
+      @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; animation-duration: 0.01ms !important; } }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Yerel Türkçe konuşma denemesi</h1>
+      <p class="notice">Bu ayrı bir teknik denemedir; ana uygulamaya bağlı değildir. Model dosyası büyük olabilir ve açıldığında cihaz belleğini kullanır. Sonuçların doğruluğu ve Android uyumluluğu henüz doğrulanmamıştır.</p>
+      <p id="local-status" class="status" role="status" aria-live="polite">Model ve tanıma cihazda çalışır. Ses diske kaydedilmez. Mikrofon yalnızca <strong>Başlat</strong> düğmesine dokununca istenir.</p>
+
+      <section aria-labelledby="model-title">
+        <h2 id="model-title">Model</h2>
+        <button id="load-model" type="button">Modeli yükle</button>
+        <progress id="model-progress" max="1" value="0" aria-label="Model indirme ilerlemesi"></progress>
+        <p id="model-status" role="status" aria-live="polite">İlk kullanımda `model.tar.gz` okunup önbelleğe alınır; yüzdelik ilerleme dosya aktarımını gösterir. Modelin belleğe açılması ayrıca sürer.</p>
+      </section>
+
+      <section aria-labelledby="recognition-title">
+        <h2 id="recognition-title">Mikrofon denemesi</h2>
+        <button id="start-recognition" type="button" disabled>Başlat</button>
+        <button id="stop-recognition" type="button" disabled>Durdur ve belleği bırak</button>
+        <h3>Ara sonuç</h3>
+        <p id="partial-result" class="transcript" aria-live="polite">—</p>
+        <h3>Sonuç</h3>
+        <p id="final-result" class="transcript" aria-live="polite">—</p>
+      </section>
+      <p>Model kaynağı ve lisans bilgisi: <code>README.md</code>. Bu sayfaya özel yerel deneme dosyaları ana uygulamanın dağıtımına eklenmez.</p>
+    </main>
+    <script src="./vendor/vosk.js"></script>
+    <script type="module" src="./main.mjs"></script>
+  </body>
+</html>

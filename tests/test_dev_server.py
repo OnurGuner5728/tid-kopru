@@ -2,6 +2,7 @@ import unittest
 from functools import partial
 from http.server import ThreadingHTTPServer
 from pathlib import Path
+from tempfile import TemporaryDirectory
 from threading import Thread
 from urllib.request import urlopen
 
@@ -29,6 +30,26 @@ class DevelopmentServerTests(unittest.TestCase):
             server.shutdown()
             thread.join(timeout=2)
             server.server_close()
+
+    def test_local_server_can_serve_a_probe_directory(self):
+        from tools.serve import create_server
+
+        with TemporaryDirectory() as temporary_directory:
+            probe_directory = Path(temporary_directory)
+            module = probe_directory / "main.mjs"
+            module.write_text("export const ready = true;", encoding="utf-8")
+            server = create_server(0, directory=probe_directory)
+            thread = Thread(target=server.serve_forever, daemon=True)
+            thread.start()
+            try:
+                with urlopen(f'http://127.0.0.1:{server.server_port}/main.mjs') as response:
+                    self.assertEqual(response.status, 200)
+                    self.assertEqual(response.headers.get_content_type(), 'application/javascript')
+                    self.assertEqual(response.read(), b"export const ready = true;")
+            finally:
+                server.shutdown()
+                thread.join(timeout=2)
+                server.server_close()
 
     def test_manifest_is_served_with_its_web_manifest_mime_type(self):
         server = ThreadingHTTPServer(
