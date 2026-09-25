@@ -1,0 +1,98 @@
+{
+  "schemaVersion": 1,
+  "mediapipeVersion": "1.0.1",
+  "onnxRuntimeVersion": "1.30.0",
+  "generatedFrom": "tools/runtime-sources.json",
+  "files": [
+    {
+      "path": "assets/runtime/models/face_landmarker.task",
+      "sha256": "64184e229b263107bc2b804c6625db1341ff2bb731874b0bcc2fe6544e0bc9ff",
+      "license": "Apache-2.0",
+      "bytes": 3758596
+    },
+    {
+      "path": "assets/runtime/models/hand_landmarker.task",
+      "sha256": "fbc2a30080c3c557093b5ddfc334698132eb341044ccee322ccf8bcf3607cde1",
+      "license": "Apache-2.0",
+      "bytes": 7819105
+    },
+    {
+      "path": "assets/runtime/models/pose_landmarker_lite.task",
+      "sha256": "59929e1d1ee95287735ddd833b19cf4ac46d29bc7afddbbf6753c459690d574a",
+      "license": "Apache-2.0",
+      "bytes": 5777746
+    },
+    {
+      "path": "vendor/mediapipe/LICENSE.txt",
+      "sha256": "8707eef0533987efc5b155d64761eeb6e20793f50b9bd1a68dad1cf4719d0ed8",
+      "license": "Apache-2.0",
+      "bytes": 12331
+    },
+    {
+      "path": "vendor/mediapipe/vision_bundle.mjs",
+      "sha256": "d885630c297c0b20b1fe86096cb06291c4c8080876f27852e724f24ac603713f",
+      "license": "Apache-2.0",
+      "bytes": 155439
+    },
+    {
+      "path": "vendor/mediapipe/wasm/vision_wasm_internal.js",
+      "sha256": "e170ee67dd4e16c1a6fcd8840a206687e5a59b22c20e4a902bc445b095454d73",
+      "license": "Apache-2.0",
+      "bytes": 323377
+    },
+    {
+      "path": "vendor/mediapipe/wasm/vision_wasm_internal.wasm",
+      "sha256": "8da277a733926eacd0474b8704b36742d6ec3231c57a860c5b889dff8f1df886",
+      "license": "Apache-2.0",
+      "bytes": 11756954
+    },
+    {
+      "path": "vendor/mediapipe/wasm/vision_wasm_module_internal.js",
+      "sha256": "da8934057f147b622e82cfb4c0dbd85461c598e268588b5a8ba9ca963a8ff82d",
+      "license": "Apache-2.0",
+      "bytes": 323415
+    },
+    {
+      "path": "vendor/mediapipe/wasm/vision_wasm_module_internal.wasm",
+      "sha256": "2dabd8e23c60984628beb7bb338764c81a08e6837145273f59578684b5d53c1b",
+      "license": "Apache-2.0",
+      "bytes": 11756972
+    },
+    {
+      "path": "vendor/mediapipe/wasm/vision_wasm_nosimd_internal.js",
+      "sha256": "e81d715a3d42cc3373602eb2f7aff795d164934db680e32496b65dab537f9658",
+      "license": "Apache-2.0",
+      "bytes": 323180
+    },
+    {
+      "path": "vendor/mediapipe/wasm/vision_wasm_nosimd_internal.wasm",
+      "sha256": "a28483cd42e74e855bf5ebdb6b40d9b66a5b49e35e95020bc97669e6822a3192",
+      "license": "Apache-2.0",
+      "bytes": 10960242
+    },
+    {
+      "path": "vendor/onnxruntime/LICENSE.txt",
+      "sha256": "2f07c72751aed99790b8a4869cf2311df85a860b22ded05fa22803587a48922c",
+      "license": "MIT",
+      "bytes": 1073
+    },
+    {
+      "path": "vendor/onnxruntime/ort-wasm-simd-threaded.mjs",
+      "sha256": "e13f7f94fc51b4ca72b12faeb1ee95f4ace6dfbc8939bc718aabdc0a27c4299b",
+      "license": "MIT",
+      "bytes": 24381
+    },
+    {
+      "path": "vendor/onnxruntime/ort-wasm-simd-threaded.wasm",
+      "sha256": "3398c10d07d229bd91b364548e130e0e51a8e5704b88c7c083ebbeb78842dee2",
+      "license": "MIT",
+      "bytes": 14239897
+    },
+    {
+      "path": "vendor/onnxruntime/ort.wasm.min.mjs",
+      "sha256": "219e6a1fc8a9938268d18efca3c91d310bd2f4a59bbd13744df5b2b7fc6cee3b",
+      "license": "MIT",
+      "bytes": 50126
+    }
+  ]
+}

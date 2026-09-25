@@ -1,5 +1,6 @@
 __pycache__/
 *.py[cod]
+/node_modules/
 /tools/offline_speech/downloads/
 /tools/offline_speech/models/
 /tools/offline_speech/recordings/
