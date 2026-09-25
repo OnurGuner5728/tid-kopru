@@ -18,11 +18,13 @@ function isInteger(value) {
   return Number.isInteger(value) && value >= 0;
 }
 
-function isSafeSameOriginPath(path, origin) {
+function isSafeSameOriginPath(path, origin, publicBaseUrl) {
   if (typeof path !== 'string' || !SAME_ORIGIN_ASSET_PATH.test(path)) return false;
   if (path.split('/').some((part, index) => index > 0 && ['', '.', '..'].includes(part))) return false;
   try {
-    return new URL(path, origin).origin === origin;
+    const base = new URL(publicBaseUrl);
+    const url = new URL(path.slice(1), base);
+    return url.origin === origin && url.pathname === `${base.pathname}${path.slice(1)}`;
   } catch {
     return false;
   }
@@ -66,9 +68,9 @@ function hasValidGloss(entry) {
     && entry.translation.glosses.every(isText);
 }
 
-function isValidMediaAsset(asset, origin) {
+function isValidMediaAsset(asset, origin, publicBaseUrl) {
   return isRecord(asset)
-    && isSafeSameOriginPath(asset.path, origin)
+    && isSafeSameOriginPath(asset.path, origin, publicBaseUrl)
     && isText(asset.licenseId)
     && asset.redistributionAllowed === true
     && typeof asset.sha256 === 'string'
@@ -92,7 +94,7 @@ function isValidNonManualTimeline(timeline, startMs, endMs) {
     ));
 }
 
-function resolveSegments(entry, mediaManifest, origin) {
+function resolveSegments(entry, mediaManifest, origin, publicBaseUrl) {
   if (entry.playable !== true || !Array.isArray(entry.media) || entry.media.length === 0) return null;
   const glossCount = entry.translation.glosses.length;
   const segments = [];
@@ -100,7 +102,7 @@ function resolveSegments(entry, mediaManifest, origin) {
     if (!isRecord(segment) || !['video', 'avatar'].includes(segment.kind)) return null;
     if (segment.kind === 'avatar' && !isText(segment.animationId)) return null;
     const asset = mediaManifest?.[segment.assetId];
-    if (!isValidMediaAsset(asset, origin)) return null;
+    if (!isValidMediaAsset(asset, origin, publicBaseUrl)) return null;
     if (
       !isInteger(segment.startMs)
       || !isInteger(segment.endMs)
@@ -188,7 +190,12 @@ function resolveApprovedMedia(entry, manifest, analysis, resources, sourceText) 
     return unsupportedResult(sourceText, analysis, resources, 'unreviewed_content');
   }
 
-  const segments = resolveSegments(entry, manifest, resources?.origin ?? 'https://tid-kopru.invalid');
+  const segments = resolveSegments(
+    entry,
+    manifest,
+    resources?.origin ?? 'https://tid-kopru.invalid',
+    resources?.publicBaseUrl ?? `${resources?.origin ?? 'https://tid-kopru.invalid'}/`,
+  );
   if (segments) {
     return { ...result, status: 'ready', segments };
   }
@@ -207,11 +214,11 @@ function isValidAssetPathShape(path) {
     && !path.split('/').some((part, index) => index > 0 && ['', '.', '..'].includes(part));
 }
 
-async function fetchJson(path, fetcher, origin) {
-  if (!isValidAssetPathShape(path) || !isSafeSameOriginPath(path, origin)) fail('unsafe_content_path');
+async function fetchJson(path, fetcher, origin, publicBaseUrl) {
+  if (!isValidAssetPathShape(path) || !isSafeSameOriginPath(path, origin, publicBaseUrl)) fail('unsafe_content_path');
   let response;
   try {
-    response = await fetcher(new URL(path, origin).href, { credentials: 'same-origin' });
+    response = await fetcher(new URL(path.slice(1), publicBaseUrl).href, { credentials: 'same-origin' });
   } catch {
     fail('content_asset_unavailable');
   }
@@ -236,7 +243,7 @@ async function hashCanonicalJson(value) {
   return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
 }
 
-function validateLoadedBundle(bundle, manifest) {
+function validateLoadedBundle(bundle, manifest, origin, publicBaseUrl) {
   if (
     !isRecord(bundle)
     || bundle.schemaVersion !== CONTENT_SCHEMA_VERSION
@@ -252,7 +259,7 @@ function validateLoadedBundle(bundle, manifest) {
       fail('invalid_reviewed_content');
     }
     if (!Array.isArray(entry.media) || entry.media.length === 0) fail('invalid_reviewed_content');
-    if (entry.playable === true && !resolveSegments(entry, manifest.mediaAssets, 'https://tid-kopru.invalid')) {
+    if (entry.playable === true && !resolveSegments(entry, manifest.mediaAssets, origin, publicBaseUrl)) {
       fail('invalid_playable_entry');
     }
   }
@@ -286,10 +293,10 @@ function validateTemplates(templates, entries) {
   });
 }
 
-function validateAssetManifest(mediaAssets) {
+function validateAssetManifest(mediaAssets, origin, publicBaseUrl) {
   if (!isRecord(mediaAssets)) fail('invalid_media_manifest');
   for (const [assetId, asset] of Object.entries(mediaAssets)) {
-    if (!isText(assetId) || !isRecord(asset) || !isValidAssetPathShape(asset.path) || !isText(asset.licenseId) || asset.redistributionAllowed !== true || !SHA256_PATTERN.test(asset.sha256 ?? '') || !isInteger(asset.durationMs) || asset.durationMs === 0) {
+    if (!isText(assetId) || !isRecord(asset) || !isValidAssetPathShape(asset.path) || !isSafeSameOriginPath(asset.path, origin, publicBaseUrl) || !isText(asset.licenseId) || asset.redistributionAllowed !== true || !SHA256_PATTERN.test(asset.sha256 ?? '') || !isInteger(asset.durationMs) || asset.durationMs === 0) {
       fail('invalid_media_manifest');
     }
   }
@@ -316,6 +323,7 @@ export async function loadTidTranslationResources({
   fetcher = globalThis.fetch?.bind(globalThis),
   origin = globalThis.location?.origin,
   manifestPath = '/assets/tid/content-manifest.json',
+  publicBaseUrl,
 } = {}) {
   if (typeof fetcher !== 'function' || !isText(origin)) fail('content_loader_unavailable');
   let pageOrigin;
@@ -324,8 +332,19 @@ export async function loadTidTranslationResources({
   } catch {
     fail('content_loader_unavailable');
   }
+  let pageBaseUrl;
+  try {
+    const candidate = publicBaseUrl ?? (globalThis.location?.href
+      ? new URL('./', globalThis.location.href).href
+      : `${pageOrigin}/`);
+    const base = new URL('./', candidate);
+    if (base.origin !== pageOrigin) fail('content_loader_unavailable');
+    pageBaseUrl = base.href;
+  } catch {
+    fail('content_loader_unavailable');
+  }
 
-  const { data: manifest } = await fetchJson(manifestPath, fetcher, pageOrigin);
+  const { data: manifest } = await fetchJson(manifestPath, fetcher, pageOrigin, pageBaseUrl);
   if (
     !isRecord(manifest)
     || manifest.schemaVersion !== CONTENT_SCHEMA_VERSION
@@ -340,18 +359,18 @@ export async function loadTidTranslationResources({
       || !SHA256_PATTERN.test(manifest.glossToTurkish.sha256 ?? ''))) fail('invalid_content_manifest');
   const { contentHash, ...hashableManifest } = manifest;
   if (await hashCanonicalJson(hashableManifest) !== contentHash) fail('content_manifest_hash_mismatch');
-  validateAssetManifest(manifest.mediaAssets);
+  validateAssetManifest(manifest.mediaAssets, pageOrigin, pageBaseUrl);
   validateLexicon(manifest.lexicon);
 
-  const { data: reviewedContent } = await fetchJson(manifest.reviewedContent.path, fetcher, pageOrigin);
+  const { data: reviewedContent } = await fetchJson(manifest.reviewedContent.path, fetcher, pageOrigin, pageBaseUrl);
   const reviewedContentHash = await hashCanonicalJson(reviewedContent);
   if (reviewedContentHash !== manifest.reviewedContent.sha256) fail('content_hash_mismatch');
-  const entries = validateLoadedBundle(reviewedContent, manifest);
+  const entries = validateLoadedBundle(reviewedContent, manifest, pageOrigin, pageBaseUrl);
   const templates = validateTemplates(manifest.templates, entries);
   let glossToTurkish = null;
   let glossToTurkishHash = null;
   if (manifest.glossToTurkish) {
-    const { data: bundle } = await fetchJson(manifest.glossToTurkish.path, fetcher, pageOrigin);
+    const { data: bundle } = await fetchJson(manifest.glossToTurkish.path, fetcher, pageOrigin, pageBaseUrl);
     glossToTurkishHash = await hashCanonicalJson(bundle);
     if (glossToTurkishHash !== manifest.glossToTurkish.sha256) fail('gloss_to_turkish_hash_mismatch');
     glossToTurkish = validateGlossToTurkishBundle(bundle, manifest);
@@ -363,6 +382,7 @@ export async function loadTidTranslationResources({
     reviewedContentHash,
     glossToTurkishHash,
     origin: pageOrigin,
+    publicBaseUrl: pageBaseUrl,
     lexicon: { entries: manifest.lexicon },
     entries,
     templates,

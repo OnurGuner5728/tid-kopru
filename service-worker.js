@@ -1,6 +1,7 @@
 importScripts('./sw-policy.js');
 
 const CACHE_NAME = 'tid-kopru-v4';
+const APP_BASE_URL = new URL('./', self.location.href);
 const APP_SHELL_ASSETS = [
   './',
   './index.html',
@@ -52,8 +53,10 @@ self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
   const requestUrl = new URL(event.request.url);
   if (requestUrl.origin !== self.location.origin) return;
+  const appRelativePath = self.TidKopruCachePolicy.getAppRelativePath(requestUrl.pathname, APP_BASE_URL.pathname);
+  if (!appRelativePath) return;
 
-  if (requestUrl.pathname.startsWith('/vendor/onnxruntime-web/') || requestUrl.pathname.startsWith('/assets/tid/camera/')) {
+  if (appRelativePath.startsWith('/vendor/onnxruntime-web/') || appRelativePath.startsWith('/assets/tid/camera/')) {
     event.respondWith((async () => {
       const shellCache = await caches.open(CACHE_NAME);
       const manifestUrl = new URL('./assets/tid/sentence-model-manifest.json', self.location.href).href;
@@ -64,6 +67,7 @@ self.addEventListener('fetch', (event) => {
       return self.TidKopruCachePolicy.getCameraModelResponse({
         request: event.request,
         origin: self.location.origin,
+        baseUrl: APP_BASE_URL.href,
         manifest,
         cacheStorage: caches,
         fetcher: fetch,
@@ -72,8 +76,8 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  if (requestUrl.pathname.startsWith('/assets/tid/')
-    && !['/assets/tid/content-manifest.json', '/assets/tid/reviewed-content.json', '/assets/tid/gloss-to-turkish.json', '/assets/tid/sentence-model-manifest.json', '/assets/tid/morphology-rules.json'].includes(requestUrl.pathname)) {
+  if (appRelativePath.startsWith('/assets/tid/')
+    && !['/assets/tid/content-manifest.json', '/assets/tid/reviewed-content.json', '/assets/tid/gloss-to-turkish.json', '/assets/tid/sentence-model-manifest.json', '/assets/tid/morphology-rules.json'].includes(appRelativePath)) {
     event.respondWith((async () => {
       const shellCache = await caches.open(CACHE_NAME);
       const manifestUrl = new URL('./assets/tid/content-manifest.json', self.location.href).href;
@@ -95,6 +99,7 @@ self.addEventListener('fetch', (event) => {
       return self.TidKopruCachePolicy.getReviewedMediaResponse({
         request: event.request,
         origin: self.location.origin,
+        baseUrl: APP_BASE_URL.href,
         manifest,
         cacheStorage: caches,
         fetcher: fetch,
