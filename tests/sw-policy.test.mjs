@@ -145,6 +145,7 @@ test('app shell excludes large avatar downloads and includes its runtime depende
   assert.ok(assets.includes('./assets/tid/morphology-rules.json'));
   for (const asset of [
     './', './index.html', './styles.css', './app.mjs', './avatar.mjs', './matcher.mjs',
+    './tid-output-ui.mjs',
     './sw-policy.js', './manifest.webmanifest', './icons/icon.svg', './icons/maskable.svg',
     './vendor/three/three.module.js', './vendor/three/addons/loaders/GLTFLoader.js',
     './vendor/three/addons/controls/OrbitControls.js', './vendor/three/addons/utils/BufferGeometryUtils.js'
@@ -166,6 +167,6 @@ test('service-worker registration reports secure-install and offline-first-use r
   assert.match(appHtml, /id="pwa-status"[^>]*role="status"/u);
   assert.match(appSource, /navigator\.serviceWorker\.register\('\.\/service-worker\.js'\)\s*\.then\(/u);
   assert.match(appSource, /navigator\.serviceWorker\.register\('\.\/service-worker\.js'\)[\s\S]*?\.catch\(/u);
-  assert.match(appSource, /ilk çevrimdışı kullanım için avatarı bir kez/u);
+  assert.match(appSource, /TİD medya dosyaları ilk oynatımda indirilir/u);
 });
 

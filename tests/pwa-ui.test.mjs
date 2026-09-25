@@ -5,6 +5,7 @@ import { readFile } from 'node:fs/promises';
 const html = await readFile(new URL('../public/index.html', import.meta.url), 'utf8');
 const app = await readFile(new URL('../public/app.mjs', import.meta.url), 'utf8');
 const avatar = await readFile(new URL('../public/avatar.mjs', import.meta.url), 'utf8');
+const tidOutput = await readFile(new URL('../public/tid-output-ui.mjs', import.meta.url), 'utf8');
 const styles = await readFile(new URL('../public/styles.css', import.meta.url), 'utf8');
 
 test('avatar retry is an accessible control beside the loading surface', () => {
@@ -12,16 +13,26 @@ test('avatar retry is an accessible control beside the loading surface', () => {
   assert.match(html, /id="pwa-status"[^>]*role="status"[^>]*aria-live="polite"/u);
 });
 
-test('avatar retry reuses one scene and restores progress and retry states', () => {
+test('avatar retry reuses one scene while Turkish translation requires explicit confirmation', () => {
   assert.match(app, /async function loadAvatar\(\)/u);
   assert.match(app, /elements\.avatarLoader\.hidden = false/u);
   assert.match(app, /elements\.avatarRetry\.disabled = true/u);
   assert.match(app, /elements\.avatarRetry\.hidden = false/u);
   assert.match(app, /elements\.avatarRetry\.addEventListener\('click', loadAvatar\)/u);
-  assert.match(app, /elements\.showSigns\.disabled = true/u);
-  assert.match(app, /elements\.showSigns\.disabled = false/u);
+  assert.match(html, /id="confirm-turkish"[^>]*disabled/u);
+  assert.match(html, /id="play-tid"[^>]*disabled[^>]*hidden/u);
+  assert.match(app, /createTidOutputController/u);
+  assert.match(app, /translateTurkishToTid\(text, translationResources\)/u);
+  assert.doesNotMatch(app, /matchText\(/u);
   assert.match(avatar, /if \(!this\.renderer\) this\.setupScene\(\)/u);
   assert.doesNotMatch(app, /elements\.(?:heardText|replyText)\.disabled\s*=\s*true/u);
+});
+
+test('translation and playback output announce status and progress accessibly', () => {
+  assert.match(html, /id="tid-status"[^>]*role="status"[^>]*aria-live="polite"/u);
+  assert.match(html, /id="tid-progress"[^>]*aria-live="polite"/u);
+  assert.match(html, /id="stop-tid"[^>]*type="button"/u);
+  assert.match(tidOutput, /onSegmentStart: \(segment\)/u);
 });
 
 test('speech failures explain microphone and network recovery paths', () => {
@@ -30,10 +41,12 @@ test('speech failures explain microphone and network recovery paths', () => {
   }
   assert.match(app, /SpeechRecognition|webkitSpeechRecognition/u);
   assert.match(app, /konuşma tanımayı desteklemiyor\. Metni elle yazabilirsiniz\./u);
+  assert.match(app, /tidOutput\?\.setSpeechActive\(active\)/u);
+  assert.doesNotMatch(app, /elements\.heardText\.disabled\s*=\s*true/u);
 });
 
 test('offline status explains which downloaded features remain available', () => {
-  assert.match(app, /Çevrimdışı kullanımda yalnızca daha önce açılmış avatar dosyaları kullanılabilir/u);
+  assert.match(app, /Çevrimdışı kullanımda daha önce açılmış avatar ve onaylı TİD içerikleri kullanılabilir/u);
   assert.match(app, /function renderPwaStatus\(\)/u);
   assert.match(app, /let pwaStatusMessage = '';/u);
 });

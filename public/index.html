@@ -35,7 +35,7 @@
       <div>
         <p class="eyebrow">Ücretsiz · Hesapsız · Kayıt tutmaz</p>
         <h1 id="intro-title">Aynı masada,<br><em>daha anlaşılır</em> iletişim.</h1>
-        <p class="intro-copy">Konuşmayı yazıya dönüştürün, yanıtınızı seslendirin veya kayıtlı işaretleri avatarla izleyin.</p>
+        <p class="intro-copy">Türkçe metni yazın ya da konuşun; son hâlini gözden geçirip onaylayarak TİD karşılığını açın.</p>
       </div>
       <aside class="privacy-card">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 4.5 5v5.4c0 5 3.2 9.6 7.5 11.1 4.3-1.5 7.5-6.1 7.5-11.1V5L12 2Zm0 4a3 3 0 0 1 3 3v1h1v6H8v-6h1V9a3 3 0 0 1 3-3Zm0 2a1 1 0 0 0-1 1v1h2V9a1 1 0 0 0-1-1Z"/></svg>
@@ -51,14 +51,15 @@
         </div>
         <p class="card-description">Mikrofona dokunun. Duyulan Türkçe metni gerekirse elle düzeltin.</p>
         <div class="speech-support" id="speech-support" role="status"></div>
-        <label class="field-label" for="heard-text">Duyulan metin</label>
-        <textarea id="heard-text" rows="6" maxlength="800" placeholder="Konuşma burada görünecek…"></textarea>
+        <label class="field-label" for="heard-text">Türkçe metin — dinledikten sonra gözden geçirip onaylayın</label>
+        <textarea id="heard-text" rows="6" maxlength="800" placeholder="Türkçe yazın veya mikrofonla konuşun…"></textarea>
         <div class="field-meta"><span id="heard-count">0 / 800</span><span id="listening-state" aria-live="polite">Hazır</span></div>
         <div class="button-row">
           <button class="button primary mic-button" id="mic-button" type="button">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 1 0-6 0v6a3 3 0 0 0 3 3Zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.9V21H8v2h8v-2h-3v-3.1A7 7 0 0 0 19 11h-2Z"/></svg>
             <span>Dinlemeyi başlat</span>
           </button>
+          <button class="button lime" id="confirm-turkish" type="button" disabled>Metni onayla ve TİD'e çevir</button>
           <button class="button secondary" id="fullscreen-button" type="button">Büyük göster</button>
           <button class="icon-button" id="clear-heard" type="button" aria-label="Duyulan metni temizle" title="Temizle">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 21a2 2 0 0 1-2-2V7H3V5h5V3h8v2h5v2h-2v12a2 2 0 0 1-2 2H7Zm2-4h2V9H9v8Zm4 0h2V9h-2v8Z"/></svg>
@@ -92,35 +93,34 @@
 
     <section class="sign-section" aria-labelledby="sign-title">
       <div class="sign-copy">
-        <p class="eyebrow light">Kayıtlı işaret sözlüğü</p>
-        <h2 id="sign-title">Türkçe metni avatarla göster</h2>
-        <p>Metindeki yalnızca birebir eşleşen kayıtlı sözcükler sırayla oynatılır. Bu özellik doğal TİD cümle çevirisi değildir.</p>
-        <label class="field-label light-label" for="sign-text">Gösterilecek metin</label>
-        <div class="sign-input-row">
-          <input id="sign-text" type="text" maxlength="240" placeholder="Örneğin: anne baba arkadaş">
-          <button class="button lime" id="show-signs" type="button">İşaretleri göster</button>
-        </div>
-        <div class="match-summary" id="match-summary" aria-live="polite">
-          <span id="dictionary-count">Sözlük yükleniyor…</span>
-        </div>
-        <div class="token-list" id="token-list"></div>
-        <div class="missing-box" id="missing-box" hidden>
-          <strong>Bulunamayan sözcükler</strong>
-          <span id="missing-words"></span>
+        <p class="eyebrow light">Uzman onaylı içerik</p>
+        <h2 id="sign-title">Türkçe cümlenin TİD karşılığı</h2>
+        <p>Konuşma veya yazı alanındaki son metni onaylayınca bütün cümle denetlenir. Yalnızca lisansı ve TİD karşılığı onaylanmış içerik oynatılır; desteklenmeyen metinde tahmin gösterilmez.</p>
+        <div class="translation-output" aria-label="TİD çeviri sonucu">
+          <p class="field-label light-label">Onayladığınız Türkçe</p>
+          <p class="translation-source" id="tid-source"></p>
+          <p class="field-label light-label">Onaylı gloss / karşılık</p>
+          <p class="translation-gloss" id="tid-gloss"></p>
+          <p class="translation-status" id="tid-status" role="status" aria-live="polite" data-state="idle">Türkçe metni yazın veya konuşun; son hâlini gözden geçirip onaylayın.</p>
+          <div class="button-row translation-actions">
+            <button class="button lime" id="play-tid" type="button" disabled hidden>İşaretleri oynat</button>
+            <button class="button secondary" id="stop-tid" type="button" hidden>Durdur</button>
+            <button class="button secondary" id="retry-tid" type="button" hidden>Yeniden dene</button>
+          </div>
+          <p class="translation-progress" id="tid-progress" aria-live="polite"></p>
         </div>
       </div>
       <div class="avatar-panel">
         <div class="avatar-topline">
-          <span class="avatar-label">Avatar önizleme</span>
+          <span class="avatar-label">Onaylı TİD gösterimi</span>
           <span class="avatar-status" id="avatar-status" aria-live="polite">Yükleniyor…</span>
         </div>
+        <video class="tid-video" id="tid-video" playsinline muted hidden aria-label="Onaylı TİD işaret videosu"></video>
         <div class="avatar-stage" id="avatar-stage">
           <div class="avatar-loader" id="avatar-loader"><span></span><p>Avatar hazırlanıyor</p></div>
           <button class="button secondary avatar-retry" id="avatar-retry" type="button" aria-label="Avatar yüklemesini yeniden dene" hidden>Yeniden dene</button>
-          <div class="current-word" id="current-word"></div>
         </div>
-        <div class="progress-track"><span id="sign-progress"></span></div>
-        <p class="avatar-footnote">Poz verileri SignBridge kaynaklarından alınmıştır. Anlaşılabilirlik, TİD bilen kullanıcılarla doğrulanmalıdır.</p>
+        <p class="avatar-footnote">Şu an dağıtım paketinde uzman onaylı ve lisansı doğrulanmış cümle hareketi bulunmuyor. İçerik eklenene kadar uygulama gloss veya hareket uydurmaz.</p>
       </div>
     </section>
 
