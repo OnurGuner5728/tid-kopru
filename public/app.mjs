@@ -567,7 +567,8 @@ async function initializeCameraTools() {
     runtimeReady = true;
     elements.cameraStatus.textContent = 'Kişisel cihaz içi kamera tanıma hazır. Önce bir işareti üç kez öğretin.';
     populateTeachingLabels();
-  } catch {
+  } catch (error) {
+    console.error('camera_runtime_init_failed', error?.code ?? error?.message, JSON.stringify(error?.detail ?? null));
     appState.transition('error');
     elements.cameraStatus.textContent = 'Yerel kamera çalışma zamanı hazırlanamadı. Sayfayı yenileyip yeniden deneyin.';
   }

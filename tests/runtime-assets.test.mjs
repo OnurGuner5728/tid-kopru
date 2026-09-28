@@ -44,3 +44,28 @@ test('vendor script rejects an unlisted output', async () => {
     await rm(directory, { recursive: true, force: true });
   }
 });
+
+test('each MediaPipe task gets an isolated module loader instance', async () => {
+  const manifest = JSON.parse(await readFile(MANIFEST_PATH, 'utf8'));
+  const workerSource = await readFile(path.join(ROOT, 'public', 'landmark-worker.js'), 'utf8');
+  const paths = new Set(manifest.files.map((asset) => asset.path));
+  const { createIsolatedWasmFileset } = await import('../public/mediapipe-fileset.mjs');
+
+  assert.ok(paths.has('vendor/mediapipe/wasm/vision_wasm_module_internal.js'));
+  assert.ok(paths.has('vendor/mediapipe/wasm/vision_wasm_module_internal.wasm'));
+  assert.match(workerSource, /createIsolatedWasmFileset\(visionModule\.FilesetResolver,/u);
+  const resolverCalls = [];
+  const resolver = { forVisionTasks: async (...args) => {
+    resolverCalls.push(args);
+    return { wasmLoaderPath: 'https://example.test/wasm/vision_wasm_module_internal.js', wasmBinaryPath: 'https://example.test/wasm/vision_wasm_module_internal.wasm' };
+  } };
+  const hand = await createIsolatedWasmFileset(resolver, 'https://example.test/wasm/', 'hand');
+  const pose = await createIsolatedWasmFileset(resolver, 'https://example.test/wasm/', 'pose');
+
+  assert.equal(resolverCalls.length, 2);
+  assert.equal(resolverCalls[0][1], true);
+  assert.notEqual(hand.wasmLoaderPath, pose.wasmLoaderPath);
+  assert.equal(new URL(hand.wasmLoaderPath).searchParams.get('task'), 'hand');
+  assert.equal(new URL(pose.wasmLoaderPath).searchParams.get('task'), 'pose');
+  assert.equal(hand.wasmBinaryPath, pose.wasmBinaryPath);
+});

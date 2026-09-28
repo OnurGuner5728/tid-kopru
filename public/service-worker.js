@@ -1,6 +1,6 @@
 importScripts('./sw-policy.js');
 
-const CACHE_NAME = 'tid-kopru-v5';
+const CACHE_NAME = 'tid-kopru-v6';
 const APP_BASE_URL = new URL('./', self.location.href);
 const APP_SHELL_ASSETS = [
   './',
@@ -16,6 +16,7 @@ const APP_SHELL_ASSETS = [
   './landmark-runtime.mjs',
   './landmark-worker.js',
   './landmark-normalization.mjs',
+  './mediapipe-fileset.mjs',
   './personal-sign-store.mjs',
   './personal-training.mjs',
   './personal-sign-recognizer.mjs',

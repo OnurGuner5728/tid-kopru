@@ -73,7 +73,9 @@ export function createLandmarkRuntime({
     if (data?.type === 'ready') pending.get('initialize')?.resolve(true);
     if (data?.type === 'error') {
       const target = data.requestId ? pending.get(data.requestId) : pending.get('initialize');
-      target?.reject(codedError(data.code ?? 'landmark_worker_failed'));
+      const error = codedError(data.code ?? 'landmark_worker_failed');
+      error.detail = data.detail ?? null;
+      target?.reject(error);
     }
     if (data?.type === 'frame') pending.get(data.requestId)?.resolve(data.frame);
     if (data?.requestId) pending.delete(data.requestId);

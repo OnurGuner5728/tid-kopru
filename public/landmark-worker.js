@@ -1,24 +1,45 @@
 import { normalizeLandmarkFrame } from './landmark-normalization.mjs';
+import { createIsolatedWasmFileset } from './mediapipe-fileset.mjs';
 
 let handLandmarker;
 let poseLandmarker;
 let faceLandmarker;
+let initializationStage = 'idle';
 
-function postError(code, requestId) { self.postMessage({ type: 'error', code, requestId }); }
+function postError(error, requestId) {
+  self.postMessage({
+    type: 'error',
+    code: error?.message || 'landmark_worker_failed',
+    detail: { stage: initializationStage, stack: error?.stack ?? null },
+    requestId,
+  });
+}
 
 async function initialize(urls) {
+  initializationStage = 'import-runtime-bundle';
   const visionModule = await import(urls['vendor/mediapipe/vision_bundle.mjs']);
-  const vision = await visionModule.FilesetResolver.forVisionTasks(new URL('./wasm/', urls['vendor/mediapipe/vision_bundle.mjs']).href);
+  initializationStage = 'load-wasm-fileset';
+  const wasmRoot = new URL('./wasm/', urls['vendor/mediapipe/vision_bundle.mjs']).href;
   const baseOptions = (modelAssetPath) => ({ modelAssetPath, delegate: 'CPU' });
-  handLandmarker = await visionModule.HandLandmarker.createFromOptions(vision, {
+  initializationStage = 'create-hand-landmarker';
+  handLandmarker = await visionModule.HandLandmarker.createFromOptions(
+    await createIsolatedWasmFileset(visionModule.FilesetResolver, wasmRoot, 'hand'), {
     baseOptions: baseOptions(urls['assets/runtime/models/hand_landmarker.task']), runningMode: 'VIDEO', numHands: 2,
-  });
-  poseLandmarker = await visionModule.PoseLandmarker.createFromOptions(vision, {
+    },
+  );
+  initializationStage = 'create-pose-landmarker';
+  poseLandmarker = await visionModule.PoseLandmarker.createFromOptions(
+    await createIsolatedWasmFileset(visionModule.FilesetResolver, wasmRoot, 'pose'), {
     baseOptions: baseOptions(urls['assets/runtime/models/pose_landmarker_lite.task']), runningMode: 'VIDEO', numPoses: 1,
-  });
-  faceLandmarker = await visionModule.FaceLandmarker.createFromOptions(vision, {
+    },
+  );
+  initializationStage = 'create-face-landmarker';
+  faceLandmarker = await visionModule.FaceLandmarker.createFromOptions(
+    await createIsolatedWasmFileset(visionModule.FilesetResolver, wasmRoot, 'face'), {
     baseOptions: baseOptions(urls['assets/runtime/models/face_landmarker.task']), runningMode: 'VIDEO', numFaces: 1,
-  });
+    },
+  );
+  initializationStage = 'ready';
 }
 
 self.addEventListener('message', async ({ data }) => {
@@ -49,6 +70,6 @@ self.addEventListener('message', async ({ data }) => {
     }
   } catch (error) {
     data?.image?.close?.();
-    postError(error?.message || 'landmark_worker_failed', data?.requestId);
+    postError(error, data?.requestId);
   }
 });
