@@ -1,6 +1,6 @@
 importScripts('./sw-policy.js');
 
-const CACHE_NAME = 'tid-kopru-v4';
+const CACHE_NAME = 'tid-kopru-v7';
 const APP_BASE_URL = new URL('./', self.location.href);
 const APP_SHELL_ASSETS = [
   './',
@@ -8,6 +8,22 @@ const APP_SHELL_ASSETS = [
   './styles.css',
   './app.mjs',
   './avatar.mjs',
+  './procedural-rig.mjs',
+  './letter-cards.mjs',
+  './tid-display-plan.mjs',
+  './privacy-mode.mjs',
+  './media-capture-registry.mjs',
+  './app-state.mjs',
+  './landmark-runtime.mjs',
+  './landmark-worker.js',
+  './landmark-normalization.mjs',
+  './mediapipe-fileset.mjs',
+  './personal-sign-store.mjs',
+  './personal-training.mjs',
+  './personal-sign-recognizer.mjs',
+  './hybrid-recognition.mjs',
+  './cloud-session.mjs',
+  './nvidia-candidate.mjs',
   './matcher.mjs',
   './tid-media-player.mjs',
   './tid-output-ui.mjs',
@@ -26,9 +42,9 @@ const APP_SHELL_ASSETS = [
   './assets/tid/gloss-to-turkish.json',
   './assets/tid/sentence-model-manifest.json',
   './assets/tid/morphology-rules.json',
+  './assets/runtime/runtime-manifest.json',
+  './assets/avatar/saved-poses.json',
   './vendor/three/three.module.js',
-  './vendor/three/addons/loaders/GLTFLoader.js',
-  './vendor/three/addons/utils/BufferGeometryUtils.js',
   './vendor/three/addons/controls/OrbitControls.js'
 ];
 
@@ -50,7 +66,7 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  if (event.request.method !== 'GET') return;
+  if (self.TidKopruCachePolicy.isPrivateRequest(event.request)) return;
   const requestUrl = new URL(event.request.url);
   if (requestUrl.origin !== self.location.origin) return;
   const appRelativePath = self.TidKopruCachePolicy.getAppRelativePath(requestUrl.pathname, APP_BASE_URL.pathname);

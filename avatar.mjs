@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { createProceduralRig } from './procedural-rig.mjs';
 
 const wait = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
 const IDLE_POSE = {
@@ -20,20 +20,16 @@ export class SignAvatar {
     this.stopRequested = false;
     this.playbackFrameId = null;
     this.playbackResolve = null;
+    this.playbackRate = 1;
   }
 
   async initialize() {
     if (!this.renderer) this.setupScene();
     try {
-      const [poseResponse, model] = await Promise.all([
-        fetch('./assets/avatar/saved-poses.json'),
-        new GLTFLoader().loadAsync('./assets/avatar/rain.glb', (event) => {
-          if (event.total) this.onStatus(`Avatar yükleniyor · %${Math.round(event.loaded / event.total * 100)}`);
-        })
-      ]);
+      const poseResponse = await fetch('./assets/avatar/saved-poses.json');
       if (!poseResponse.ok) throw new Error('Poz sözlüğü yüklenemedi.');
       this.poses = await poseResponse.json();
-      this.attachAvatar(model.scene);
+      if (!this.avatar) this.attachProceduralRig(createProceduralRig(THREE));
       this.ready = true;
       this.applyIdlePose();
       this.onStatus(`${Object.keys(this.poses).length} kayıtlı işaret hazır`);
@@ -92,26 +88,22 @@ export class SignAvatar {
     this.camera.updateProjectionMatrix();
   }
 
-  attachAvatar(avatar) {
-    this.avatar = avatar;
-    avatar.traverse((object) => {
-      if (object.isBone) this.bones[object.name] = object;
-      if (object.isMesh || object.isSkinnedMesh) {
-        object.castShadow = true;
-        object.frustumCulled = false;
-      }
-    });
-    this.scene.add(avatar);
-    avatar.updateMatrixWorld(true);
+  attachProceduralRig(rig) {
+    this.avatar = rig.root;
+    this.bones = rig.bones;
+    this.baseRotations = rig.baseRotations;
+    this.rigReset = rig.reset;
+    this.scene.add(this.avatar);
+    this.avatar.updateMatrixWorld(true);
 
-    const initialBox = new THREE.Box3().setFromObject(avatar);
+    const initialBox = new THREE.Box3().setFromObject(this.avatar);
     const initialHeight = initialBox.max.y - initialBox.min.y;
     const scale = initialHeight > 0.01 ? 1.78 / initialHeight : 1;
-    avatar.scale.setScalar(scale);
-    avatar.position.y = -initialBox.min.y * scale;
-    avatar.updateMatrixWorld(true);
+    this.avatar.scale.setScalar(scale);
+    this.avatar.position.y = -initialBox.min.y * scale;
+    this.avatar.updateMatrixWorld(true);
 
-    const box = new THREE.Box3().setFromObject(avatar);
+    const box = new THREE.Box3().setFromObject(this.avatar);
     const center = new THREE.Vector3();
     const size = new THREE.Vector3();
     box.getCenter(center);
@@ -119,16 +111,10 @@ export class SignAvatar {
     this.camera.position.set(0, center.y + 0.03, Math.max(3, size.y * 1.65));
     this.controls.target.set(0, center.y, 0);
     this.controls.update();
-
-    avatar.traverse((object) => {
-      if (object.isBone) this.baseRotations[object.name] = object.quaternion.clone();
-    });
   }
 
   resetPose() {
-    for (const [name, rotation] of Object.entries(this.baseRotations)) {
-      this.bones[name]?.quaternion.copy(rotation);
-    }
+    this.rigReset?.();
   }
 
   applyPose(pose, amount = 1) {
@@ -170,20 +156,20 @@ export class SignAvatar {
 
     for (let step = 0; step <= steps && !this.stopRequested; step += 1) {
       this.applyPose(frames[0], step / steps);
-      await wait(20);
+      await wait(20 / this.playbackRate);
     }
     for (let frame = 0; frame < frames.length - 1 && !this.stopRequested; frame += 1) {
-      await wait(140);
+      await wait(140 / this.playbackRate);
       for (let step = 0; step <= steps && !this.stopRequested; step += 1) {
         this.interpolatePoses(frames[frame], frames[frame + 1], step / steps);
-        await wait(20);
+        await wait(20 / this.playbackRate);
       }
     }
-    if (!this.stopRequested) await wait(520);
+    if (!this.stopRequested) await wait(520 / this.playbackRate);
     const lastFrame = frames.at(-1);
     for (let step = steps; step >= 0 && !this.stopRequested; step -= 1) {
       this.applyPose(lastFrame, step / steps);
-      await wait(20);
+      await wait(20 / this.playbackRate);
     }
     this.applyIdlePose();
     return true;
@@ -198,7 +184,7 @@ export class SignAvatar {
         onProgress({ index, word: words[index], total: words.length, done: false });
         await this.playWord(words[index]);
         onProgress({ index, word: words[index], total: words.length, done: true });
-        if (index < words.length - 1) await wait(220);
+        if (index < words.length - 1) await wait(220 / this.playbackRate);
       }
       return !this.stopRequested;
     } finally {
@@ -256,6 +242,10 @@ export class SignAvatar {
       };
       this.playbackFrameId = requestAnimationFrame(tick);
     });
+  }
+
+  setPlaybackRate(rate) {
+    if (Number.isFinite(rate) && rate >= 0.5 && rate <= 2) this.playbackRate = rate;
   }
 
   stop() {

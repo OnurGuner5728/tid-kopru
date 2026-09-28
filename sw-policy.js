@@ -15,6 +15,14 @@
     return pathname.startsWith(prefix) ? `/${pathname.slice(prefix.length)}` : null;
   }
 
+  function isPrivateRequest(request) {
+    if (!request || request.method !== 'GET') return true;
+    let url;
+    try { url = new URL(request.url); } catch { return true; }
+    return /(?:camera-blob|landmarks|api-key|provider-response)/i.test(url.pathname)
+      || request.headers?.get?.('X-TID-Private') === '1';
+  }
+
   function resolveManifestAssetPath(path, baseUrl, origin) {
     if (typeof path !== 'string' || !/^\/(?:assets\/tid|vendor\/onnxruntime-web)\/[A-Za-z0-9._/-]+$/.test(path)
         || path.split('/').some((part, index) => index > 0 && ['', '.', '..'].includes(part))) return null;
@@ -156,5 +164,5 @@
     });
   }
 
-  scope.TidKopruCachePolicy = { getOfflineAwareResponse, getReviewedMediaResponse, getCameraModelResponse, getAppRelativePath, shouldDeleteCache };
+  scope.TidKopruCachePolicy = { getOfflineAwareResponse, getReviewedMediaResponse, getCameraModelResponse, getAppRelativePath, shouldDeleteCache, isPrivateRequest };
 })(globalThis);
