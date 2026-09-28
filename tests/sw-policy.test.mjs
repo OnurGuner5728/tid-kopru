@@ -245,7 +245,8 @@ test('app shell excludes large avatar downloads and includes its runtime depende
 });
 
 test('app shell contains only the current release cache prefix policy', () => {
-  assert.match(workerSource, /const CACHE_NAME = 'tid-kopru-v7'/u);
+  assert.match(workerSource, /const CACHE_NAME = 'tid-kopru-v8'/u);
+  assert.match(workerSource, /\.\/kullanim-kilavuzu\.html/u);
   assert.match(workerSource, /shouldDeleteCache\(name, CACHE_NAME\)/u);
   assert.match(workerSource, /getReviewedMediaResponse/u);
   assert.match(workerSource, /getCameraModelResponse/u);

@@ -35,7 +35,7 @@
       <div>
         <p class="eyebrow">Ücretsiz · Hesapsız · Onay sizde</p>
         <h1 id="intro-title">Aynı masada,<br><em>daha anlaşılır</em> iletişim.</h1>
-        <p class="intro-copy">Türkçe metni yazın ya da konuşun; son hâlini gözden geçirip onaylayarak TİD karşılığını açın.</p>
+        <p class="intro-copy">Konuşmayı işaret gösterimine, öğrettiğiniz işaretleri Türkçe sese dönüştürün. <a href="./kullanim-kilavuzu.html">Kullanım kılavuzu</a></p>
       </div>
       <aside class="privacy-card">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 4.5 5v5.4c0 5 3.2 9.6 7.5 11.1 4.3-1.5 7.5-6.1 7.5-11.1V5L12 2Zm0 4a3 3 0 0 1 3 3v1h1v6H8v-6h1V9a3 3 0 0 1 3-3Zm0 2a1 1 0 0 0-1 1v1h2V9a1 1 0 0 0-1-1Z"/></svg>
@@ -96,7 +96,7 @@
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 1 0-6 0v6a3 3 0 0 0 3 3Zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.9V21H8v2h8v-2h-3v-3.1A7 7 0 0 0 19 11h-2Z"/></svg>
             <span>Dinlemeyi başlat</span>
           </button>
-          <button class="button lime" id="confirm-turkish" type="button" disabled>Metni onayla ve TİD'e çevir</button>
+          <button class="button lime" id="confirm-turkish" type="button" disabled>Onayla ve işaretleri göster</button>
           <button class="button secondary" id="fullscreen-button" type="button">Büyük göster</button>
           <button class="icon-button" id="clear-heard" type="button" aria-label="Duyulan metni temizle" title="Temizle">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 21a2 2 0 0 1-2-2V7H3V5h5V3h8v2h5v2h-2v12a2 2 0 0 1-2 2H7Zm2-4h2V9H9v8Zm4 0h2V9h-2v8Z"/></svg>
@@ -133,14 +133,14 @@
         <span class="step-number">03</span>
         <div><p class="kicker">TİD kullanan kişiden</p><h2 id="camera-title">İşareti Türkçe adaya çevir</h2></div>
       </div>
-      <p class="card-description">Kişisel işaret tanıma için önce aşağıdaki öğretme alanında bir işareti en az üç kez kaydedin. Kamera sonucu her zaman düzenlenebilir adaydır ve yanıt alanına ancak siz onaylarsanız aktarılır.</p>
+      <p class="card-description">Kişisel işaret tanıma için önce aşağıdaki öğretme alanında bir işareti veya kısa cümleyi en az üç kez kaydedin. Sonuç düzenlenebilir aday olarak gelir; onayınızla seslendirilir.</p>
       <p class="camera-notice"><strong>Gizlilik ve ölçüm bilgisi:</strong> Yerel modda MediaPipe görüntüyü cihazda işler ve yalnızca sayısal hareket noktaları saklanır. Bulut destekli modda kısa klip ancak ayrı izninizle gönderilir. MediaPipe çalışma ortamının kendi ölçüm koşulları geçerlidir.</p>
       <div class="camera-layout">
         <div>
           <video class="camera-preview" id="camera-preview" playsinline muted hidden aria-label="İşaret tanıma kamera görüntüsü"></video>
           <p class="inline-status" id="camera-status" role="status" aria-live="polite">Yerel kamera çalışma zamanı hazırlanıyor…</p>
           <div class="button-row camera-actions">
-            <button class="button secondary" id="camera-model-download" type="button" disabled>İsteğe bağlı cümle modelini indir</button>
+            <button class="button secondary" id="camera-model-download" type="button" disabled hidden>İsteğe bağlı cümle modelini indir</button>
             <button class="button primary" id="camera-start" type="button" disabled>Kamerayı aç</button>
             <button class="button lime" id="camera-finish" type="button" disabled>İşareti bitir</button>
             <button class="button secondary" id="camera-stop" type="button" disabled>Durdur</button>
@@ -154,20 +154,23 @@
           <textarea id="camera-candidate-text" rows="3" maxlength="800" disabled placeholder="Onaylı bir eşleşme bulunursa aday burada görünür."></textarea>
           <div class="button-row">
             <button class="button secondary" id="camera-edit" type="button" disabled>Düzelt</button>
-            <button class="button coral" id="camera-confirm" type="button" disabled>Yanıt alanına aktar</button>
+            <button class="button coral" id="camera-confirm" type="button" disabled>Onayla ve seslendir</button>
           </div>
         </div>
       </div>
       <details class="teaching-panel" id="teaching-panel">
         <summary>Kişisel işaret öğret</summary>
-        <p>Kendi işaret örneklerinizi en az üç kez kaydedin. Yalnızca sayısal el, yüz ve gövde noktaları bu cihazda saklanır; kamera görüntüsü kaydedilmez.</p>
+        <p>Sözlük işareti veya kendi kısa cümleniz için en az üç örnek kaydedin. Cümle örneği 5 saniye sürer ve yalnızca aynı cümle tekrar yapıldığında eşleştirilir. Sayısal hareket noktaları cihazda saklanır; kamera görüntüsü kaydedilmez.</p>
         <div class="teaching-grid">
           <label class="field-label" for="teaching-label">Öğretilecek sözlük işareti
             <select id="teaching-label"><option value="">İşaret seçin</option></select>
           </label>
+          <label class="field-label" for="teaching-custom-text">Veya öğretilecek kısa Türkçe cümle
+            <input id="teaching-custom-text" type="text" maxlength="120" autocomplete="off" placeholder="Örneğin: Bir dakika lütfen.">
+          </label>
           <div class="button-row">
             <button class="button primary" id="teaching-record" type="button" disabled>Örnek kaydet</button>
-            <button class="button secondary" id="teaching-delete" type="button" disabled>Bu işareti sil</button>
+            <button class="button secondary" id="teaching-delete" type="button" disabled>Bu örnekleri sil</button>
             <button class="button coral" id="teaching-clear" type="button">Tüm kişisel veriyi sil</button>
           </div>
         </div>
@@ -178,13 +181,13 @@
 
     <section class="sign-section" aria-labelledby="sign-title">
       <div class="sign-copy">
-        <p class="eyebrow light">Uzman onaylı içerik</p>
-        <h2 id="sign-title">Türkçe cümlenin TİD karşılığı</h2>
-        <p>Konuşma veya yazı alanındaki son metni onaylayınca bütün cümle denetlenir. Yalnızca lisansı ve TİD karşılığı onaylanmış içerik oynatılır; desteklenmeyen metinde tahmin gösterilmez.</p>
+        <p class="eyebrow light">İşaret gösterimi</p>
+        <h2 id="sign-title">Türkçe cümlenin görsel karşılığı</h2>
+        <p>Konuşma veya yazı alanındaki son metni onaylayınca gösterim başlar. Uzman onaylı cümle yoksa sözlük pozları ve bilinmeyen sözcükler için harf kartları kullanılır; bu gösterim doğal TİD çevirisi değildir.</p>
         <div class="translation-output" aria-label="TİD çeviri sonucu">
           <p class="field-label light-label">Onayladığınız Türkçe</p>
           <p class="translation-source" id="tid-source"></p>
-          <p class="field-label light-label">Onaylı gloss / karşılık</p>
+          <p class="field-label light-label">Gösterim türü ve karşılık</p>
           <p class="translation-gloss" id="tid-gloss"></p>
           <p class="translation-status" id="tid-status" role="status" aria-live="polite" data-state="idle">Türkçe metni yazın veya konuşun; son hâlini gözden geçirip onaylayın.</p>
           <div class="button-row translation-actions">
@@ -202,7 +205,7 @@
       </div>
       <div class="avatar-panel">
         <div class="avatar-topline">
-          <span class="avatar-label">Onaylı TİD gösterimi</span>
+          <span class="avatar-label">İşaret ve harf kartı gösterimi</span>
           <span class="avatar-status" id="avatar-status" aria-live="polite">Yükleniyor…</span>
         </div>
         <video class="tid-video" id="tid-video" playsinline muted hidden aria-label="Onaylı TİD işaret videosu"></video>

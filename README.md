@@ -8,7 +8,7 @@ Uygulama acil, tıbbi veya hayati iletişimde tek kanal olarak kullanılmamalıd
 
 ## Hemen kullanma
 
-Yayınlanan sürüm: [https://onurguner5728.github.io/tid-kopru/](https://onurguner5728.github.io/tid-kopru/)
+Yayınlanan sürüm: [https://onurguner5728.github.io/tid-kopru/](https://onurguner5728.github.io/tid-kopru/). Adım adım [kullanım kılavuzu](https://onurguner5728.github.io/tid-kopru/kullanim-kilavuzu.html).
 
 Bilgisayarda yerel olarak açmak için proje klasöründe:
 
@@ -21,7 +21,7 @@ Ardından [http://localhost:8000](http://localhost:8000) adresini açın. Telefo
 ## Türkçe → TİD gösterimi
 
 1. Türkçe cümleyi yazın veya **Dinlemeyi başlat** ile konuşun.
-2. Tarayıcının çıkardığı metni düzeltin ve **Metni onayla ve TİD'e çevir** düğmesine basın.
+2. Tarayıcının çıkardığı metni düzeltin ve **Onayla ve işaretleri göster** düğmesine basın. Gösterim hemen başlar.
 3. Uygulama önce uzman onaylı cümle içeriği arar. Mevcut pakette bu sayı 0'dır.
 4. Ardından kişi, iyelik, olumsuzluk, soru ve gelecek zaman gibi bilgileri koruyan aktarım planını kurar. 123 sözlük poz içinden bulunanları basit iskeletle, bulunmayan görünür sözcükleri harf kartlarıyla gösterir.
 5. Hızı değiştirebilir, tekrar oynatabilir veya adım adım ilerleyebilirsiniz.
@@ -34,14 +34,14 @@ Kamera kendiliğinden açılmaz. **Kamerayı aç** düğmesiyle izin verildikten
 
 Kişisel tanıma için:
 
-1. **Kişisel işaret öğret** bölümünü açın ve sözlükten bir işaret seçin.
-2. Aynı işareti en az üç kez örnek olarak kaydedin.
+1. **Kişisel işaret öğret** bölümünü açın ve sözlükten bir işaret seçin veya kısa bir Türkçe cümle yazın.
+2. Aynı işareti veya cümleyi en az üç kez örnek olarak kaydedin. Cümle kaydı yaklaşık 5 saniye sürer ve yalnızca öğretilmiş cümlenin tekrarı için kişisel eşleştirme sağlar.
 3. Kamerada işareti yapıp **İşareti bitir** düğmesine basın.
-4. Bulunan Türkçe adayı gerekirse düzeltin; yalnızca **Yanıt alanına aktar** onayından sonra cevap alanına geçer.
+4. Bulunan Türkçe adayı gerekirse düzeltin; **Onayla ve seslendir** düğmesi metni yanıt alanına aktarır ve tarayıcının Türkçe sesiyle okur. Tanıma başarısızsa ifade biliniyorsa aday alanına elle yazılabilir.
 
 Örnekler tarayıcının cihaz içi veritabanında sayısal hareket noktaları olarak kalır. Arayüz saklamanın kalıcı cihaz depolaması mı yoksa yalnızca geçerli oturum mu olduğunu bildirir. Tek bir işareti **Bu işareti sil** ile, bütün örnekleri **Tüm kişisel veriyi sil** ile kaldırabilirsiniz. Tarayıcı verileri temizlenmedikçe kişisel örnekler yeniden açılışta kullanılabilir.
 
-Paketlenmiş, genel amaçlı bir TİD cümle tanıma modeli bulunmadığından kamera yalnızca kişisel olarak öğretilen işaretleri güvenli eşiğin üstünde eşleştirir. Eşleşme zayıfsa tahmin yerine “anlaşılamadı” sonucu verir.
+Paketlenmiş, genel amaçlı bir TİD cümle tanıma modeli bulunmadığından kamera yalnızca kişisel olarak öğretilen işaretleri ve kısa cümleleri güvenli eşiğin üstünde eşleştirir. Eşleşme zayıfsa tahmin yerine “anlaşılamadı” sonucu verir. Elle girilen metin kamera çevirisi olarak değerlendirilmez.
 
 ## Gizlilik modları
 

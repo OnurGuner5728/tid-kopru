@@ -149,5 +149,5 @@ export function tidSourceLabel(sourceClass) {
     ? 'Onaylı TİD'
     : sourceClass === 'dictionary-sequence'
       ? 'Sözlük dizimi'
-      : 'Harf kartları / yapay zekâ adayı';
+      : 'Harf kartları';
 }

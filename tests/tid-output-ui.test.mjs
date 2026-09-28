@@ -27,7 +27,7 @@ class FakeElement {
   }
 }
 
-function makeFixture({ translateText, playerOverride = {} }) {
+function makeFixture({ translateText, playerOverride = {}, autoPlayOnConfirm = false }) {
   const elements = Object.fromEntries([
     'input', 'confirmButton', 'playButton', 'stopButton', 'retryButton', 'sourceText', 'status', 'gloss', 'progress',
   ].map((name) => [name, new FakeElement()]));
@@ -44,6 +44,7 @@ function makeFixture({ translateText, playerOverride = {} }) {
   const controller = createTidOutputController({
     ...elements,
     player,
+    autoPlayOnConfirm,
     translateText: async (text) => {
       calls.translated.push(text);
       return translateText(text);
@@ -221,6 +222,15 @@ test('typing while translation resources are loading does not enable premature c
   assert.equal(fixture.elements.confirmButton.disabled, true);
   assert.equal(fixture.elements.status.dataset.state, 'loading');
   assert.deepEqual(fixture.calls.translated, []);
+});
+
+test('confirmed speech starts the available visual sequence without a second tap', async () => {
+  const fixture = makeFixture({ translateText: (text) => readyResult(text), autoPlayOnConfirm: true });
+  fixture.elements.input.value = 'Sen iyisin';
+  fixture.elements.input.input();
+  await fixture.elements.confirmButton.click();
+  assert.deepEqual(fixture.calls.translated, ['Sen iyisin']);
+  assert.equal(fixture.calls.played.length, 1);
 });
 
 test('fallback output is labeled without claiming expert-approved TİD', async () => {

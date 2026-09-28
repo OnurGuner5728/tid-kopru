@@ -1,10 +1,11 @@
 importScripts('./sw-policy.js');
 
-const CACHE_NAME = 'tid-kopru-v7';
+const CACHE_NAME = 'tid-kopru-v8';
 const APP_BASE_URL = new URL('./', self.location.href);
 const APP_SHELL_ASSETS = [
   './',
   './index.html',
+  './kullanim-kilavuzu.html',
   './styles.css',
   './app.mjs',
   './avatar.mjs',

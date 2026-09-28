@@ -54,3 +54,31 @@ test('store rejects raw or empty camera payloads', async () => {
   await assert.rejects(store.addSample('IYI', { frames: [] }), { code: 'invalid_personal_sample' });
   await assert.rejects(store.addSample('IYI', { frames: [{ imageBitmap: {} }] }), { code: 'invalid_personal_sample' });
 });
+
+test('adding a teaching example waits until device storage commits it', async () => {
+  let finishTransaction;
+  const indexedDB = { open() {
+    const openRequest = {};
+    queueMicrotask(() => {
+      openRequest.result = { transaction() {
+        const transaction = { objectStore() { return { add() {
+          const request = {};
+          queueMicrotask(() => { request.result = 1; request.onsuccess(); });
+          return request;
+        } }; } };
+        finishTransaction = () => transaction.oncomplete();
+        return transaction;
+      } };
+      openRequest.onsuccess();
+    });
+    return openRequest;
+  } };
+  const store = createPersonalSignStore({ indexedDB, dbName: 'store-commit-test' });
+  let settled = false;
+  const saving = store.addSample('MERHABA', sample).then(() => { settled = true; });
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(settled, false);
+  finishTransaction();
+  await saving;
+  assert.equal(settled, true);
+});

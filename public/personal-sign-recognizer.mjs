@@ -7,6 +7,19 @@ function frameVector(frame) {
   return values;
 }
 
+const PHRASE_PREFIX = 'phrase:';
+
+export function personalPhraseLabel(text) {
+  const phrase = typeof text === 'string' ? text.replace(/\s+/gu, ' ').trim() : '';
+  if (!phrase || phrase.length > 120) throw new TypeError('invalid_personal_phrase');
+  return `${PHRASE_PREFIX}${phrase}`;
+}
+
+export function personalPhraseText(label) {
+  return typeof label === 'string' && label.startsWith(PHRASE_PREFIX)
+    ? label.slice(PHRASE_PREFIX.length) : null;
+}
+
 function pointDistance(left, right) {
   const size = Math.max(left.length, right.length);
   if (!size) return 0;
@@ -64,6 +77,7 @@ export function classifyPersonalSign({ frames, samples, rejectThreshold } = {}) 
   }
   let best = null;
   for (const [label, labelSamples] of byLabel) {
+    if (labelSamples.length < 3) continue;
     const threshold = Number.isFinite(rejectThreshold)
       ? Math.max(0.08, Math.min(0.45, rejectThreshold))
       : thresholdFor(labelSamples);
@@ -72,8 +86,8 @@ export function classifyPersonalSign({ frames, samples, rejectThreshold } = {}) 
   }
   if (!best || !Number.isFinite(best.distance) || best.distance > best.threshold) return rejected();
   return {
-    text: undefined,
-    glosses: [best.label],
+    text: personalPhraseText(best.label) ?? undefined,
+    glosses: personalPhraseText(best.label) === null ? [best.label] : [],
     confidence: Math.max(0, Math.min(1, 1 - best.distance / Math.max(best.threshold, Number.EPSILON))),
     source: 'personal',
     warnings: ['Bu sonuç yalnızca bu cihazda öğretilen kişisel örneklere dayanır.'],
