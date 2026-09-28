@@ -55,7 +55,7 @@
         <label><input name="translation-mode" value="hybrid" type="radio"><span><strong>Akıllı hibrit</strong><small>Önce yerel modeller; bulut ayrıca onaylanırsa kullanılır.</small></span></label>
         <label><input name="translation-mode" value="cloud-assisted" type="radio"><span><strong>Bulut destekli</strong><small>Düşük güvenli kısa klipler ayrıca onayınızla gönderilebilir.</small></span></label>
       </fieldset>
-      <label class="cloud-consent"><input id="cloud-consent" type="checkbox" disabled><span>Kısa kamera klibinin seçili bulut sağlayıcısına gönderilmesine bu oturum için izin veriyorum.</span></label>
+      <label class="cloud-consent"><input id="cloud-consent" type="checkbox" disabled><span>Yerel tanıma güveni düşük olduğunda kısa kamera klibinin seçili bulut sağlayıcısına gönderilmesine bu oturum için izin veriyorum.</span></label>
       <div class="privacy-disclosures">
         <p id="camera-disclosure"><strong>Kamera:</strong> Düğmeye basınca açılır; yerel modda kareler cihazdan çıkmaz.</p>
         <p id="microphone-disclosure"><strong>Mikrofon:</strong> Düğmeye basınca açılır; tarayıcının konuşma hizmeti internet kullanabilir.</p>
@@ -172,6 +172,7 @@
           </div>
         </div>
         <p class="inline-status" id="teaching-status" role="status" aria-live="polite">İşaret sözlüğü yükleniyor…</p>
+        <p class="inline-status" id="teaching-storage-status" role="status" aria-live="polite">Kişisel örneklerin saklama yeri kontrol ediliyor…</p>
       </details>
     </section>
 

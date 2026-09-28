@@ -301,6 +301,60 @@ test('camera starts only from explicit action and a finished utterance creates a
   await client.dispose();
 });
 
+test('recognizer can use the already-approved shared camera stream without owning or stopping it', async () => {
+  const fake = fakeEnvironment();
+  const client = new SignRecognitionClient(fake.environment);
+  await client.load({ manifest: manifest() });
+
+  await client.startUtterance({ userInitiated: true, stream: fake.stream });
+  assert.equal(fake.cameraCalls, 0);
+  assert.equal(fake.video.srcObject, fake.stream);
+  await client.stopCapture();
+
+  assert.equal(fake.tracks.every((track) => track.stopped), false);
+  assert.equal(fake.video.srcObject, fake.stream);
+  await client.dispose();
+  assert.equal(fake.tracks.every((track) => track.stopped), false);
+  assert.equal(fake.video.srcObject, fake.stream);
+});
+
+test('stopping while camera permission is pending releases the late stream', async () => {
+  const fake = fakeEnvironment();
+  let resolvePermission;
+  fake.environment.mediaDevices.getUserMedia = () => new Promise((resolve) => { resolvePermission = resolve; });
+  const client = new SignRecognitionClient(fake.environment);
+  await client.load({ manifest: manifest() });
+  const starting = client.startUtterance({ userInitiated: true });
+  await Promise.resolve();
+
+  await client.abortCapture('user_cancelled');
+  resolvePermission(fake.stream);
+
+  await assert.rejects(starting, { code: 'capture_cancelled' });
+  assert.equal(fake.tracks.every((track) => track.stopped), true);
+  assert.equal(fake.video.srcObject, null);
+  await client.dispose();
+});
+
+test('stopping while the shared camera preview is starting does not revive its capture loop', async () => {
+  const fake = fakeEnvironment();
+  let resolvePlay;
+  fake.video.play = () => new Promise((resolve) => { resolvePlay = resolve; });
+  const client = new SignRecognitionClient(fake.environment);
+  await client.load({ manifest: manifest() });
+  const starting = client.startUtterance({ userInitiated: true, stream: fake.stream });
+  await Promise.resolve();
+
+  await client.abortCapture('user_cancelled');
+  resolvePlay();
+
+  await assert.rejects(starting, { code: 'capture_cancelled' });
+  assert.equal(fake.tracks.every((track) => track.stopped), false);
+  assert.equal(fake.video.srcObject, fake.stream);
+  assert.equal(fake.rafCallbacks.length, 0);
+  await client.dispose();
+});
+
 test('camera frame transfer applies backpressure instead of buffering an unbounded utterance', async () => {
   const fake = fakeEnvironment();
   fake.video.readyState = 2;

@@ -27,3 +27,16 @@ test('trainer captures normalized frames and exposes quality without retaining r
   await trainer.deleteLabel('IYI');
   assert.equal((await trainer.getProgress('IYI')).sampleCount, 0);
 });
+
+test('trainer rejects a mostly empty hand sample before it counts toward readiness', async () => {
+  const store = createPersonalSignStore({ indexedDB: null, dbName: 'trainer-quality-test' });
+  const trainer = createPersonalTrainer({ runtime: {}, store, minSamples: 3 });
+  const emptyFrame = (timestampMs) => ({
+    timestampMs, handMask: { left: false, right: false },
+    hands: { left: null, right: null }, pose: null, face: null,
+  });
+
+  await assert.rejects(trainer.addSample('MERHABA', [emptyFrame(1), emptyFrame(2), emptyFrame(3)]), (error) => error.code === 'personal_sample_quality_low');
+
+  assert.deepEqual(await trainer.getProgress('MERHABA'), { label: 'MERHABA', sampleCount: 0, minSamples: 3, ready: false });
+});

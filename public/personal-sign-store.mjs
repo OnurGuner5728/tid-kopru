@@ -31,6 +31,7 @@ export function createPersonalSignStore({ indexedDB = globalThis.indexedDB, dbNa
   if (!memoryDatabases.has(dbName)) memoryDatabases.set(dbName, new Map());
   const memory = memoryDatabases.get(dbName);
   const dbPromise = openDatabase(indexedDB, dbName);
+  let persistentStoreFailed = false;
 
   const withStore = async (mode, operation) => {
     const db = await dbPromise;
@@ -48,7 +49,7 @@ export function createPersonalSignStore({ indexedDB = globalThis.indexedDB, dbNa
           transaction.onerror = () => reject(transaction.error);
         }
       } catch (error) { reject(error); }
-    }).catch(() => null);
+    }).catch(() => { persistentStoreFailed = true; return null; });
   };
 
   const addSample = async (label, sample) => {
@@ -81,5 +82,9 @@ export function createPersonalSignStore({ indexedDB = globalThis.indexedDB, dbNa
   };
 
   const clear = async () => { memory.clear(); await withStore('readwrite', (store) => store.clear()); };
-  return { addSample, getSamples, listLabels, deleteLabel, clear };
+  const getStorageMode = async () => {
+    const db = await dbPromise;
+    return db && !persistentStoreFailed ? 'device' : 'session-only';
+  };
+  return { addSample, getSamples, listLabels, deleteLabel, clear, getStorageMode };
 }

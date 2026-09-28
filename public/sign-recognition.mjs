@@ -43,6 +43,8 @@ export class SignRecognitionClient {
     this.loaded = false;
     this.disposed = false;
     this.stream = null;
+    this.ownsStream = false;
+    this.captureGeneration = 0;
     this.animationFrame = null;
     this.lastFrameAt = -Infinity;
     this.framesInFlight = 0;
@@ -123,19 +125,27 @@ export class SignRecognitionClient {
     return { modelVersion: manifest.modelVersion, contentVersion: manifest.contentVersion };
   }
 
-  async startUtterance({ userInitiated = false, onCandidate = () => {}, onRejected = () => {}, onError = () => {} } = {}) {
+  async startUtterance({ userInitiated = false, stream: sharedStream = null, onCandidate = () => {}, onRejected = () => {}, onError = () => {} } = {}) {
     if (!this.loaded || this.disposed) throw codedError(this.disposed ? 'client_disposed' : 'model_not_loaded');
     if (!userInitiated) throw codedError('user_action_required');
     if (this.stream) throw codedError('capture_already_active');
     const mediaDevices = this.environment.mediaDevices ?? globalThis.navigator?.mediaDevices;
     const video = this.environment.videoElement;
     if (!mediaDevices?.getUserMedia || !video) throw codedError('camera_unavailable');
+    const generation = ++this.captureGeneration;
     this.callbacks = { onCandidate, onRejected, onError };
     try {
-      this.stream = await mediaDevices.getUserMedia({ audio: false, video: { facingMode: 'user' } });
+      const stream = sharedStream ?? await mediaDevices.getUserMedia({ audio: false, video: { facingMode: 'user' } });
+      if (this.disposed || generation !== this.captureGeneration) {
+        if (!sharedStream) for (const track of stream?.getTracks?.() ?? []) { try { track.stop(); } catch { /* release every track */ } }
+        throw codedError(this.disposed ? 'client_disposed' : 'capture_cancelled');
+      }
+      this.stream = stream;
+      this.ownsStream = !sharedStream;
       video.srcObject = this.stream;
       video.playsInline = true;
       await video.play();
+      if (this.disposed || generation !== this.captureGeneration) throw codedError(this.disposed ? 'client_disposed' : 'capture_cancelled');
       this.finishing = false;
       this.lastFrameAt = -Infinity;
       this.framesInFlight = 0;
@@ -201,6 +211,7 @@ export class SignRecognitionClient {
   }
 
   async abortCapture(reason = 'capture_stopped') {
+    this.captureGeneration += 1;
     if (!this.stream) return;
     this.finishing = true;
     this.worker?.postMessage({ type: 'ABORT', reason });
@@ -277,14 +288,16 @@ export class SignRecognitionClient {
   async releaseCapture({ abort }) {
     this.cancelFrameLoop();
     const stream = this.stream;
+    const ownsStream = this.ownsStream;
     this.stream = null;
+    this.ownsStream = false;
     this.framesInFlight = 0;
     if (abort && this.worker) this.worker.postMessage({ type: 'ABORT' });
-    for (const track of stream?.getTracks?.() ?? []) {
+    if (ownsStream) for (const track of stream?.getTracks?.() ?? []) {
       try { track.stop(); } catch { /* stop all remaining tracks */ }
     }
     const video = this.environment.videoElement;
-    if (video) {
+    if (video && ownsStream) {
       try { video.pause?.(); } catch { /* clearing srcObject is the privacy boundary */ }
       video.srcObject = null;
     }

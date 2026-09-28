@@ -35,6 +35,21 @@ test('missing hands are masked while face and pose stay optional', () => {
   assert.throws(() => normalizeLandmarkFrame({ timestampMs: 1 }), { code: 'empty_landmark_frame' });
 });
 
+test('returns an explicitly empty masked frame when MediaPipe detects no landmarks', () => {
+  const frame = normalizeLandmarkFrame({
+    timestampMs: 10,
+    handLandmarks: [],
+    handednesses: [],
+    poseLandmarks: [],
+    faceLandmarks: [],
+  });
+
+  assert.deepEqual(frame.handMask, { left: false, right: false });
+  assert.equal(frame.hasAnyLandmarks, false);
+  assert.equal(frame.pose, null);
+  assert.equal(frame.face, null);
+});
+
 test('runtime throttles frames to 15 fps, keeps timestamps increasing, and disposes its worker', async () => {
   const messages = [];
   const listeners = new Map();

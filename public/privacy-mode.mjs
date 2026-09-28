@@ -19,6 +19,7 @@ export function stopMediaStream(stream) {
 export function createPrivacyModeController({
   initialMode = TRANSLATION_MODES.LOCAL,
   onChange = () => {},
+  onDispose = () => {},
   pageTarget = globalThis.window,
   documentTarget = globalThis.document,
 } = {}) {
@@ -69,6 +70,8 @@ export function createPrivacyModeController({
       try { disposer(); } catch { /* continue closing remaining resources */ }
     }
     disposers.clear();
+    emit();
+    try { onDispose(); } catch { /* disposal must still complete */ }
   };
 
   const onPageHide = () => dispose();

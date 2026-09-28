@@ -232,6 +232,7 @@ test('app shell excludes large avatar downloads and includes its runtime depende
     './', './index.html', './styles.css', './app.mjs', './avatar.mjs', './matcher.mjs',
     './tid-output-ui.mjs', './tid-display-plan.mjs', './letter-cards.mjs', './procedural-rig.mjs',
     './privacy-mode.mjs', './app-state.mjs', './landmark-runtime.mjs', './landmark-worker.js',
+    './media-capture-registry.mjs',
     './landmark-normalization.mjs', './mediapipe-fileset.mjs', './personal-sign-store.mjs', './personal-training.mjs',
     './personal-sign-recognizer.mjs', './hybrid-recognition.mjs', './cloud-session.mjs', './nvidia-candidate.mjs',
     './tid-to-turkish.mjs', './sign-recognition.mjs', './sign-recognition-worker.js', './onnx-runtime-loader.mjs',
@@ -244,7 +245,7 @@ test('app shell excludes large avatar downloads and includes its runtime depende
 });
 
 test('app shell contains only the current release cache prefix policy', () => {
-  assert.match(workerSource, /const CACHE_NAME = 'tid-kopru-v6'/u);
+  assert.match(workerSource, /const CACHE_NAME = 'tid-kopru-v7'/u);
   assert.match(workerSource, /shouldDeleteCache\(name, CACHE_NAME\)/u);
   assert.match(workerSource, /getReviewedMediaResponse/u);
   assert.match(workerSource, /getCameraModelResponse/u);

@@ -37,6 +37,32 @@ test('cloud is called only in cloud-assisted mode with explicit consent', async 
   assert.equal(result.source, 'cloud-candidate');
 });
 
+test('cloud escalation skips upload when local confidence is already strong', async () => {
+  let calls = 0;
+  const recognizer = createHybridRecognizer({
+    personalBackend: { recognize: async () => candidate('personal', 0.84) },
+    cloudBackend: { recognize: async () => { calls += 1; return candidate('cloud-candidate', 0.58); } },
+  });
+
+  const result = await recognizer.recognize({}, { mode: 'cloud-assisted', cloudConsent: true });
+
+  assert.equal(result.source, 'personal');
+  assert.equal(calls, 0);
+});
+
+test('cloud escalation is attempted after a weak local result with consent', async () => {
+  let calls = 0;
+  const recognizer = createHybridRecognizer({
+    personalBackend: { recognize: async () => candidate('personal', 0.4) },
+    cloudBackend: { recognize: async () => { calls += 1; return candidate('cloud-candidate', 0.58); } },
+  });
+
+  const result = await recognizer.recognize({}, { mode: 'cloud-assisted', cloudConsent: true });
+
+  assert.equal(calls, 1);
+  assert.equal(result.source, 'cloud-candidate');
+});
+
 test('malformed backend outputs are ignored and empty arbitration says anlaşılmadı', async () => {
   const recognizer = createHybridRecognizer({
     personalBackend: { recognize: async () => ({ confidence: 4, source: 'personal' }) },

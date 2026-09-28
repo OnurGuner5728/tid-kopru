@@ -1,6 +1,6 @@
 importScripts('./sw-policy.js');
 
-const CACHE_NAME = 'tid-kopru-v6';
+const CACHE_NAME = 'tid-kopru-v7';
 const APP_BASE_URL = new URL('./', self.location.href);
 const APP_SHELL_ASSETS = [
   './',
@@ -12,6 +12,7 @@ const APP_SHELL_ASSETS = [
   './letter-cards.mjs',
   './tid-display-plan.mjs',
   './privacy-mode.mjs',
+  './media-capture-registry.mjs',
   './app-state.mjs',
   './landmark-runtime.mjs',
   './landmark-worker.js',

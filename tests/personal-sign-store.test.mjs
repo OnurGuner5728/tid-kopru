@@ -19,8 +19,34 @@ test('store falls back to memory when IndexedDB open throws and can clear all da
   const store = createPersonalSignStore({ indexedDB: { open() { throw new Error('denied'); } }, dbName: 'store-fallback-test' });
   await store.addSample('IYI', sample);
   assert.equal((await store.getSamples('IYI')).length, 1);
+  assert.equal(await store.getStorageMode(), 'session-only');
   await store.clear();
   assert.deepEqual(await store.listLabels(), []);
+});
+
+test('store reports device persistence when IndexedDB is available', async () => {
+  const indexedDB = { open() {
+    const request = {};
+    queueMicrotask(() => { request.result = {}; request.onsuccess(); });
+    return request;
+  } };
+  const store = createPersonalSignStore({ indexedDB, dbName: 'store-storage-mode-test' });
+
+  assert.equal(await store.getStorageMode(), 'device');
+});
+
+test('store switches its report to session-only when an IndexedDB transaction fails', async () => {
+  const indexedDB = { open() {
+    const request = {};
+    queueMicrotask(() => { request.result = { transaction() { throw new Error('quota denied'); } }; request.onsuccess(); });
+    return request;
+  } };
+  const store = createPersonalSignStore({ indexedDB, dbName: 'store-transaction-fallback-test' });
+
+  await store.addSample('IYI', sample);
+
+  assert.equal(await store.getStorageMode(), 'session-only');
+  assert.equal((await store.getSamples('IYI')).length, 1);
 });
 
 test('store rejects raw or empty camera payloads', async () => {

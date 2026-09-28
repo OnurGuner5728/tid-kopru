@@ -27,6 +27,17 @@ test('provider sends inline video to an OpenAI-compatible endpoint and caps conf
   assert.equal(result.text, 'Merhaba');
 });
 
+test('provider accepts the codec-qualified WebM MIME type produced by MediaRecorder', async () => {
+  let request;
+  const provider = createNvidiaCandidateProvider({ fetcher: async (_url, init) => { request = init; return response(200); } });
+  const recordedBlob = new Blob(['video'], { type: 'video/webm;codecs=vp8' });
+
+  await provider.recognizeVideo({ blob: recordedBlob, apiKey: 'fresh-key' });
+
+  const body = JSON.parse(request.body);
+  assert.match(body.messages[0].content[1].video_url.url, /^data:video\/webm;base64,/u);
+});
+
 test('proxy mode does not require or transmit a browser API key', async () => {
   let headers;
   const provider = createNvidiaCandidateProvider({ fetcher: async (_url, init) => { headers = init.headers; return response(200); }, proxyUrl: '/api/nvidia' });

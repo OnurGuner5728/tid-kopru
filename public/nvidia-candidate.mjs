@@ -58,12 +58,13 @@ export function createNvidiaCandidateProvider({
   return {
     async recognizeVideo({ blob, apiKey, signal } = {}) {
       if (signal?.aborted) throw Object.assign(new Error('aborted'), { name: 'AbortError' });
-      if (!(blob instanceof Blob) || !['video/webm', 'video/mp4'].includes(blob.type) || blob.size === 0 || blob.size > MAX_VIDEO_BYTES) {
+      const mediaType = typeof blob?.type === 'string' ? blob.type.split(';', 1)[0].trim().toLowerCase() : '';
+      if (!(blob instanceof Blob) || !['video/webm', 'video/mp4'].includes(mediaType) || blob.size === 0 || blob.size > MAX_VIDEO_BYTES) {
         throw codedError('cloud_video_invalid');
       }
       if (!proxyUrl && (typeof apiKey !== 'string' || !apiKey.trim())) throw codedError('cloud_key_missing');
       const bytes = new Uint8Array(await blob.arrayBuffer());
-      const dataUrl = `data:${blob.type};base64,${bytesToBase64(bytes)}`;
+      const dataUrl = `data:${mediaType};base64,${bytesToBase64(bytes)}`;
       const controller = new AbortController();
       let timedOut = false;
       const onAbort = () => controller.abort(signal?.reason);

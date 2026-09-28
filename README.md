@@ -39,7 +39,7 @@ Kişisel tanıma için:
 3. Kamerada işareti yapıp **İşareti bitir** düğmesine basın.
 4. Bulunan Türkçe adayı gerekirse düzeltin; yalnızca **Yanıt alanına aktar** onayından sonra cevap alanına geçer.
 
-Örnekler tarayıcının cihaz içi veritabanında sayısal hareket noktaları olarak kalır. Tek bir işareti **Bu işareti sil** ile, bütün örnekleri **Tüm kişisel veriyi sil** ile kaldırabilirsiniz. Tarayıcı verileri temizlenmedikçe kişisel örnekler yeniden açılışta kullanılabilir.
+Örnekler tarayıcının cihaz içi veritabanında sayısal hareket noktaları olarak kalır. Arayüz saklamanın kalıcı cihaz depolaması mı yoksa yalnızca geçerli oturum mu olduğunu bildirir. Tek bir işareti **Bu işareti sil** ile, bütün örnekleri **Tüm kişisel veriyi sil** ile kaldırabilirsiniz. Tarayıcı verileri temizlenmedikçe kişisel örnekler yeniden açılışta kullanılabilir.
 
 Paketlenmiş, genel amaçlı bir TİD cümle tanıma modeli bulunmadığından kamera yalnızca kişisel olarak öğretilen işaretleri güvenli eşiğin üstünde eşleştirir. Eşleşme zayıfsa tahmin yerine “anlaşılamadı” sonucu verir.
 
@@ -47,9 +47,9 @@ Paketlenmiş, genel amaçlı bir TİD cümle tanıma modeli bulunmadığından k
 
 - **Yalnızca cihazda:** Varsayılan moddur. Kamera karesi, hareket noktaları ve metin buluta gönderilmez.
 - **Akıllı hibrit:** Önce kişisel yerel eşleştirme, ardından varsa hash doğrulanmış yerel ONNX modeli kullanılır. Mevcut pakette ONNX cümle modeli yoktur.
-- **Bulut destekli:** Yalnızca ayrı kutuyu işaretleyerek açık izin verdiğinizde kısa klip NVIDIA hizmetine gönderilebilir. Bu seçim her oturumda yeniden yapılır.
+- **Bulut destekli:** Yalnızca ayrı kutuyu işaretleyerek açık izin verdiğinizde ve cihaz içi güven 0,72 eşiğinin altındaysa kısa klip NVIDIA hizmetine gönderilebilir. Yüksek güvenli yerel sonuçta klip gönderilmez. Bu seçim her oturumda yeniden yapılır.
 
-NVIDIA modeli genel amaçlı ve TİD için doğrulanmamış bir video modelidir. Sonucu en fazla düşük güvenli, düzenlenebilir bir adaydır; kullanıcı onayı olmadan cevap alanına aktarılmaz. API anahtarı yalnızca sayfanın o oturumundaki bellekte tutulur, kalıcı depoya yazılmaz ve sayfa gizlenince veya kapanınca temizlenir. Depoda API anahtarı bulunmaz.
+NVIDIA modeli genel amaçlı ve TİD için doğrulanmamış bir video modelidir. Sonucu en fazla düşük güvenli, düzenlenebilir bir adaydır; kullanıcı onayı olmadan cevap alanına aktarılmaz. API anahtarı yalnızca sayfanın o oturumundaki bellekte tutulur, kalıcı depoya yazılmaz ve sayfa gizlenince veya kapanınca temizlenir. Depoda API anahtarı bulunmaz. Sayfa gizlenince medya izinleri ve kamera kaynakları kapatılır; devam etmek için sayfayı yenilemek gerekir.
 
 Mikrofon yalnızca **Dinlemeyi başlat** düğmesine basılınca açılır. Tarayıcı konuşma tanıma hizmeti internet kullanabilir ve sesi tarayıcı sağlayıcısına gönderebilir. Elle yazma, cümle çözümleme, avatar ve kişisel kamera tanıma cihazda çalışır.
 

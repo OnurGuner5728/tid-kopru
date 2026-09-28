@@ -52,6 +52,25 @@ test('pagehide and hidden visibility dispose registered resources', () => {
   assert.equal(hiddenDisposals, 1);
 });
 
+test('privacy disposal clears consent in the UI and reports the one-way shutdown', () => {
+  const changes = [];
+  let shutdowns = 0;
+  const controller = createPrivacyModeController({
+    onChange: (state) => changes.push(state),
+    onDispose: () => { shutdowns += 1; },
+    pageTarget: new EventTarget(),
+    documentTarget: new EventTarget(),
+  });
+  controller.setMode(TRANSLATION_MODES.HYBRID);
+  controller.grantCloudConsent();
+
+  controller.dispose();
+  controller.dispose();
+
+  assert.deepEqual(changes.at(-1), { mode: 'hybrid', cloudConsent: false });
+  assert.equal(shutdowns, 1);
+});
+
 test('invalid translation modes fail closed', () => {
   const controller = createPrivacyModeController();
   assert.throws(() => controller.setMode('always-upload'), /invalid_translation_mode/);

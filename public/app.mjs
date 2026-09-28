@@ -5,7 +5,7 @@ import { createTidOutputController } from './tid-output-ui.mjs';
 import { SignRecognitionClient } from './sign-recognition.mjs';
 import { downloadCameraModel } from './onnx-runtime-loader.mjs';
 import { translateTidGlossToTurkish } from './tid-transfer.mjs';
-import { TRANSLATION_MODES, createPrivacyModeController } from './privacy-mode.mjs';
+import { TRANSLATION_MODES, createPrivacyModeController, stopMediaStream } from './privacy-mode.mjs';
 import { createCloudSession } from './cloud-session.mjs';
 import { createLandmarkRuntime, verifyRuntimeManifestFiles } from './landmark-runtime.mjs';
 import { createPersonalSignStore } from './personal-sign-store.mjs';
@@ -16,6 +16,7 @@ import { createNvidiaCandidateProvider } from './nvidia-candidate.mjs';
 import { createTidDisplayPlan } from './tid-display-plan.mjs';
 import { renderLetterCards } from './letter-cards.mjs';
 import { createAppStateMachine } from './app-state.mjs';
+import { createMediaCaptureRegistry } from './media-capture-registry.mjs';
 
 const elements = {
   networkDot: document.querySelector('#network-dot'),
@@ -72,6 +73,7 @@ const elements = {
   teachingDelete: document.querySelector('#teaching-delete'),
   teachingClear: document.querySelector('#teaching-clear'),
   teachingStatus: document.querySelector('#teaching-status'),
+  teachingStorageStatus: document.querySelector('#teaching-storage-status'),
   letterCardStage: document.querySelector('#letter-card-stage'),
   playbackSpeed: document.querySelector('#playback-speed'),
   repeatTid: document.querySelector('#repeat-tid'),
@@ -94,15 +96,23 @@ let cameraCandidateReady = false;
 let privacyController;
 const cloudSession = createCloudSession();
 const personalStore = createPersonalSignStore();
+const captureRegistry = createMediaCaptureRegistry();
 let landmarkRuntime;
 let personalTrainer;
 let personalBackend;
 let runtimeReady = false;
+let privacyDisposed = false;
 let activeCameraStream = null;
+let activeTeachingStream = null;
+let teachingCapturePending = false;
+let cameraClientCapturing = false;
+let activeRecognitionController = null;
 let capturedFrames = [];
 let mediaRecorder = null;
+let mediaRecorderDataHandler = null;
 let recordedChunks = [];
 let cloudClip = null;
+let discardRecorderOutput = false;
 const appState = createAppStateMachine({ onChange: (state) => document.body.dataset.appState = state });
 
 function initializePrivacyModes() {
@@ -112,8 +122,24 @@ function initializePrivacyModes() {
       elements.cloudConsent.disabled = mode === TRANSLATION_MODES.LOCAL;
       elements.cloudConsent.checked = cloudConsent;
       elements.cloudDisclosure.innerHTML = cloudConsent
-        ? '<strong>Bulut:</strong> Bu oturum için açık. Yalnızca ayrıca gönderdiğiniz kısa klip kullanılır.'
+        ? '<strong>Bulut:</strong> Bu oturum için açık. Kısa klip yalnızca yerel güven düşükse gönderilir.'
         : '<strong>Bulut:</strong> Kapalı. Hiçbir kamera klibi gönderilmez.';
+    },
+    onDispose: () => {
+      privacyDisposed = true;
+      runtimeReady = false;
+      elements.modeInputs.forEach((input) => { input.disabled = true; });
+      elements.cloudConsent.disabled = true;
+      elements.micButton.disabled = true;
+      elements.teachingRecord.disabled = true;
+      elements.cameraStart.disabled = true;
+      elements.cameraFinish.disabled = true;
+      elements.cameraStop.disabled = true;
+      elements.cameraDownload.disabled = true;
+      elements.cameraStatus.textContent = 'Gizlilik için kamera ve mikrofon kapatıldı. Yeniden kullanmak için sayfayı yenileyin.';
+      elements.pwaStatus.textContent = 'Bu sayfa gizlilik nedeniyle medya kaynaklarını kapattı. Kullanıma devam etmek için sayfayı yenileyin.';
+      elements.pwaStatus.hidden = false;
+      if (appState.getState() !== 'idle') appState.transition('idle');
     },
   });
   elements.modeInputs.forEach((input) => input.addEventListener('change', () => {
@@ -140,12 +166,25 @@ function initializePrivacyModes() {
   privacyController.registerDisposer(() => {
     try { recognition?.abort?.(); } catch { /* recognition may already be closed */ }
     globalThis.speechSynthesis?.cancel?.();
+    activeRecognitionController?.abort('page_hidden');
+    activeRecognitionController = null;
+    void cameraClient?.abortCapture('page_hidden');
     void cameraClient?.dispose();
     cameraClient = null;
     cameraInstalled = false;
+    cameraClientCapturing = false;
     landmarkRuntime?.stopCapture();
     void landmarkRuntime?.dispose();
-    stopStream();
+    captureRegistry.dispose();
+    discardMediaRecording();
+    cloudClip = null;
+    recordedChunks = [];
+    capturedFrames = [];
+    activeCameraStream = null;
+    activeTeachingStream = null;
+    elements.cameraPreview.pause?.();
+    elements.cameraPreview.srcObject = null;
+    elements.cameraPreview.hidden = true;
     cloudSession.dispose();
   });
 }
@@ -343,10 +382,10 @@ async function loadTranslationResources({ retryCurrentText = false } = {}) {
 
 function refreshCameraControls() {
   const busy = ['requesting-permission', 'capturing', 'processing'].includes(appState.getState());
-  elements.cameraStart.disabled = !runtimeReady || busy;
-  elements.cameraFinish.disabled = appState.getState() !== 'capturing';
-  elements.cameraStop.disabled = !['requesting-permission', 'capturing', 'processing'].includes(appState.getState());
-  elements.cameraDownload.disabled = cameraManifest?.available !== true || cameraInstalled;
+  elements.cameraStart.disabled = privacyDisposed || !runtimeReady || busy || teachingCapturePending || Boolean(activeTeachingStream);
+  elements.cameraFinish.disabled = privacyDisposed || appState.getState() !== 'capturing';
+  elements.cameraStop.disabled = privacyDisposed || !['requesting-permission', 'capturing', 'processing'].includes(appState.getState());
+  elements.cameraDownload.disabled = privacyDisposed || cameraManifest?.available !== true || cameraInstalled;
 }
 
 function sourceLabel(source) {
@@ -376,21 +415,56 @@ function renderCameraCandidate(result) {
 }
 
 function stopStream(stream = activeCameraStream) {
-  for (const track of stream?.getTracks?.() ?? []) track.stop();
-  if (stream === activeCameraStream) activeCameraStream = null;
-  elements.cameraPreview.srcObject = null;
-  elements.cameraPreview.hidden = true;
+  if (stream && stream === activeCameraStream) {
+    captureRegistry.cancel('camera');
+    activeCameraStream = null;
+    void cameraClient?.abortCapture('capture_stopped');
+    cameraClientCapturing = false;
+  } else if (stream && stream === activeTeachingStream) {
+    captureRegistry.cancel('teaching');
+    activeTeachingStream = null;
+  } else {
+    stopMediaStream(stream);
+  }
+  if (!stream || elements.cameraPreview.srcObject === stream) {
+    elements.cameraPreview.srcObject = null;
+    elements.cameraPreview.hidden = true;
+  }
 }
 
 function finishRecorder() {
-  if (!mediaRecorder || mediaRecorder.state === 'inactive') return Promise.resolve(cloudClip);
+  if (!mediaRecorder) return Promise.resolve(cloudClip);
+  if (mediaRecorder.state === 'inactive') {
+    cloudClip = discardRecorderOutput ? null : recordedChunks.length ? new Blob(recordedChunks, { type: mediaRecorder.mimeType || 'video/webm' }) : null;
+    recordedChunks = [];
+    return Promise.resolve(cloudClip);
+  }
+  const recorder = mediaRecorder;
   return new Promise((resolve) => {
-    mediaRecorder.addEventListener('stop', () => {
-      cloudClip = recordedChunks.length ? new Blob(recordedChunks, { type: mediaRecorder.mimeType || 'video/webm' }) : null;
+    recorder.addEventListener('stop', () => {
+      cloudClip = discardRecorderOutput ? null : recordedChunks.length ? new Blob(recordedChunks, { type: recorder.mimeType || 'video/webm' }) : null;
+      recordedChunks = [];
+      if (mediaRecorder === recorder) {
+        mediaRecorder = null;
+        mediaRecorderDataHandler = null;
+      }
       resolve(cloudClip);
     }, { once: true });
-    mediaRecorder.stop();
+    recorder.stop();
   });
+}
+
+function discardMediaRecording() {
+  discardRecorderOutput = true;
+  const recorder = mediaRecorder;
+  if (recorder && mediaRecorderDataHandler) recorder.removeEventListener('dataavailable', mediaRecorderDataHandler);
+  mediaRecorderDataHandler = null;
+  if (recorder?.state !== 'inactive') {
+    try { recorder.stop(); } catch { /* its camera track may already have stopped */ }
+  }
+  mediaRecorder = null;
+  recordedChunks = [];
+  cloudClip = null;
 }
 
 async function cloudCandidateBackend() {
@@ -405,23 +479,38 @@ async function cloudCandidateBackend() {
   };
 }
 
-async function recognizeCapturedUtterance() {
+async function recognizeCapturedUtterance(onnxCandidate = null) {
   const privacy = privacyController.getState();
-  const cloudBackend = privacy.mode === TRANSLATION_MODES.CLOUD_ASSISTED && privacy.cloudConsent
-    ? await cloudCandidateBackend()
-    : null;
-  const recognizer = createHybridRecognizer({
-    personalBackend,
-    cloudBackend,
-    translateGlosses: (events) => translateTidGlossToTurkish(events, translationResources?.glossToTurkish),
-  });
-  return recognizer.recognize({ frames: capturedFrames, blob: cloudClip }, privacy);
+  const controller = new AbortController();
+  activeRecognitionController = controller;
+  try {
+    const cloudBackend = privacy.mode === TRANSLATION_MODES.CLOUD_ASSISTED && privacy.cloudConsent
+      ? await cloudCandidateBackend()
+      : null;
+    const recognizer = createHybridRecognizer({
+      personalBackend,
+      onnxBackend: onnxCandidate?.source === 'verified-onnx' ? { recognize: async () => onnxCandidate } : null,
+      cloudBackend,
+      translateGlosses: (events) => translateTidGlossToTurkish(events, translationResources?.glossToTurkish),
+    });
+    return await recognizer.recognize({ frames: capturedFrames, blob: cloudClip }, { ...privacy, signal: controller.signal });
+  } finally {
+    if (activeRecognitionController === controller) activeRecognitionController = null;
+  }
 }
 
 function populateTeachingLabels() {
   const names = Object.keys(avatar?.poses ?? {}).sort((left, right) => left.localeCompare(right, 'tr'));
   elements.teachingLabel.replaceChildren(new Option('İşaret seçin', ''), ...names.map((name) => new Option(name, name)));
   elements.teachingStatus.textContent = `${names.length} sözlük işareti öğretmeye hazır. Her işareti en az üç kez kaydedin.`;
+  void updatePersonalStorageStatus();
+}
+
+async function updatePersonalStorageStatus() {
+  const mode = await personalStore.getStorageMode();
+  elements.teachingStorageStatus.textContent = mode === 'device'
+    ? 'Saklama: kişisel örnekler bu cihazda kalıcı olarak tutuluyor.'
+    : 'Saklama: tarayıcı kalıcı depolamayı açamadı; örnekler yalnızca bu oturumda kalır ve sayfa kapanınca silinir.';
 }
 
 async function initializeCameraTools() {
@@ -443,42 +532,77 @@ async function initializeCameraTools() {
     if (!cameraManifest?.available || cameraInstalled) return;
     elements.cameraDownload.disabled = true;
     try {
-      await downloadCameraModel(cameraManifest, { origin: location.origin, onProgress: ({ percent }) => { elements.cameraProgress.textContent = `${percent}% doğrulandı`; } });
+      await downloadCameraModel(cameraManifest, { origin: location.origin, baseUrl: new URL('./', location.href).href, onProgress: ({ percent }) => { elements.cameraProgress.textContent = `${percent}% doğrulandı`; } });
+      if (privacyDisposed) return;
+      cameraClient = new SignRecognitionClient({ videoElement: elements.cameraPreview, pageTarget: window });
+      await cameraClient.load({ manifest: cameraManifest, onProgress: ({ percent }) => { elements.cameraProgress.textContent = `${percent}% model hazırlandı`; } });
+      if (privacyDisposed) {
+        void cameraClient?.dispose();
+        cameraClient = null;
+        return;
+      }
       cameraInstalled = true;
-      elements.cameraStatus.textContent = 'İsteğe bağlı yerel cümle modeli doğrulandı.';
+      elements.cameraStatus.textContent = 'İsteğe bağlı yerel cümle modeli doğrulandı ve kullanıma hazır.';
     } catch {
-      elements.cameraStatus.textContent = 'İsteğe bağlı model indirilemedi; kişisel cihaz içi tanıma kullanılabilir.';
+      void cameraClient?.dispose();
+      cameraClient = null;
+      cameraInstalled = false;
+      if (!privacyDisposed) elements.cameraStatus.textContent = 'İsteğe bağlı model indirilemedi; kişisel cihaz içi tanıma kullanılabilir.';
     }
     refreshCameraControls();
   });
 
   elements.cameraStart.addEventListener('click', async () => {
-    if (!runtimeReady || appState.getState() === 'capturing') return;
+    if (privacyDisposed || !runtimeReady || teachingCapturePending || ['requesting-permission', 'capturing', 'processing'].includes(appState.getState()) || activeTeachingStream) return;
+    const requestToken = captureRegistry.begin('camera');
     appState.transition('requesting-permission');
     refreshCameraControls();
     elements.cameraStatus.textContent = 'Kamera izni bekleniyor…';
     try {
-      activeCameraStream = await navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: 'user', width: { ideal: 960 }, height: { ideal: 720 } } });
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: 'user', width: { ideal: 960 }, height: { ideal: 720 } } });
+      if (!captureRegistry.accept('camera', requestToken, stream)) return;
+      activeCameraStream = stream;
       elements.cameraPreview.srcObject = activeCameraStream;
       elements.cameraPreview.hidden = false;
       await elements.cameraPreview.play();
+      if (!captureRegistry.isCurrent('camera', requestToken)) return;
       capturedFrames = [];
       cloudClip = null;
       recordedChunks = [];
       const privacy = privacyController.getState();
       if (privacy.mode === TRANSLATION_MODES.CLOUD_ASSISTED && privacy.cloudConsent && typeof MediaRecorder === 'function') {
         mediaRecorder = new MediaRecorder(activeCameraStream, { mimeType: MediaRecorder.isTypeSupported?.('video/webm;codecs=vp8') ? 'video/webm;codecs=vp8' : 'video/webm' });
-        mediaRecorder.addEventListener('dataavailable', ({ data }) => { if (data?.size) recordedChunks.push(data); });
+        discardRecorderOutput = false;
+        mediaRecorderDataHandler = ({ data }) => { if (data?.size) recordedChunks.push(data); };
+        mediaRecorder.addEventListener('dataavailable', mediaRecorderDataHandler);
         mediaRecorder.start(250);
       }
+      if (cameraClient && privacy.mode !== TRANSLATION_MODES.LOCAL) {
+        try {
+          await cameraClient.startUtterance({ userInitiated: true, stream: activeCameraStream });
+          cameraClientCapturing = true;
+        } catch {
+          if (!privacyDisposed && captureRegistry.isCurrent('camera', requestToken)) {
+            elements.cameraProgress.textContent = 'Yerel cümle modeli açılamadı; kişisel cihaz içi tanıma kullanılacak.';
+          }
+        }
+      }
+      if (!captureRegistry.isCurrent('camera', requestToken)) return;
       await landmarkRuntime.startCapture(elements.cameraPreview, (frame, error) => {
         if (frame) capturedFrames.push(frame);
         if (error) elements.cameraProgress.textContent = 'Bir kamera karesi işlenemedi; kayıt sürüyor.';
       });
+      if (!captureRegistry.isCurrent('camera', requestToken)) {
+        landmarkRuntime.stopCapture();
+        return;
+      }
       appState.transition('capturing');
       elements.cameraStatus.textContent = 'İşaretinizi yapın, sonra “İşareti bitir” düğmesine basın.';
     } catch {
+      const wasCancelled = privacyDisposed || !captureRegistry.isCurrent('camera', requestToken);
+      captureRegistry.cancel('camera');
       stopStream();
+      if (wasCancelled) return;
       appState.transition('error');
       elements.cameraStatus.textContent = 'Kamera açılamadı veya izin verilmedi.';
     }
@@ -492,16 +616,32 @@ async function initializeCameraTools() {
     elements.cameraStatus.textContent = 'İşaret dizisi değerlendiriliyor…';
     landmarkRuntime.stopCapture();
     await finishRecorder();
+    if (privacyDisposed || appState.getState() !== 'processing') return;
+    let onnxCandidate = null;
+    if (cameraClientCapturing) {
+      cameraClientCapturing = false;
+      try { onnxCandidate = await cameraClient.stopCapture(); } catch { /* personal recognition remains available */ }
+    }
+    if (privacyDisposed || appState.getState() !== 'processing') return;
     stopStream();
-    try { renderCameraCandidate(await recognizeCapturedUtterance()); }
-    catch { renderCameraCandidate({ reason: 'anlaşılamadı', source: 'none' }); }
+    try {
+      const result = await recognizeCapturedUtterance(onnxCandidate);
+      if (!privacyDisposed && appState.getState() === 'processing') renderCameraCandidate(result);
+    } catch {
+      if (!privacyDisposed && appState.getState() === 'processing') renderCameraCandidate({ reason: 'anlaşılamadı', source: 'none' });
+    } finally {
+      cloudClip = null;
+      recordedChunks = [];
+      capturedFrames = [];
+    }
   });
 
   elements.cameraStop.addEventListener('click', async () => {
+    activeRecognitionController?.abort('capture_stopped');
+    activeRecognitionController = null;
     landmarkRuntime?.stopCapture();
-    if (mediaRecorder?.state !== 'inactive') mediaRecorder?.stop();
-    recordedChunks = [];
-    cloudClip = null;
+    captureRegistry.cancel('camera');
+    discardMediaRecording();
     stopStream();
     appState.transition('idle');
     elements.cameraStatus.textContent = 'Kamera durduruldu; kayıt ve aday silindi.';
@@ -519,22 +659,35 @@ async function initializeCameraTools() {
   });
   elements.teachingRecord.addEventListener('click', async () => {
     const label = elements.teachingLabel.value;
-    if (!label || !runtimeReady) return;
+    if (privacyDisposed || !label || !runtimeReady || activeCameraStream || ['requesting-permission', 'capturing', 'processing'].includes(appState.getState())) return;
+    const requestToken = captureRegistry.begin('teaching');
+    teachingCapturePending = true;
     elements.teachingRecord.disabled = true;
+    refreshCameraControls();
     elements.teachingStatus.textContent = 'Kamera izni bekleniyor; işareti doğal hızınızda yapın…';
     let stream;
     try {
       stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: 'user' } });
+      if (!captureRegistry.accept('teaching', requestToken, stream)) return;
+      activeTeachingStream = stream;
       elements.cameraPreview.srcObject = stream;
       elements.cameraPreview.hidden = false;
       await elements.cameraPreview.play();
-      const result = await personalTrainer.recordSample(label, { video: elements.cameraPreview, durationMs: 1800 });
+      if (!captureRegistry.isCurrent('teaching', requestToken)) return;
+      const frames = await landmarkRuntime.captureSample({ video: elements.cameraPreview, durationMs: 1800 });
+      if (!captureRegistry.isCurrent('teaching', requestToken)) return;
+      const result = await personalTrainer.addSample(label, frames);
       elements.teachingStatus.textContent = `${label}: ${result.sampleCount} / ${result.minSamples} örnek · kalite ${result.quality}${result.ready ? ' · tanımaya hazır' : ''}`;
     } catch {
-      elements.teachingStatus.textContent = 'Örnek kaydedilemedi. Ellerin kadrajda olduğundan ve kamera izninden emin olun.';
+      if (captureRegistry.isCurrent('teaching', requestToken) && !privacyDisposed) {
+        elements.teachingStatus.textContent = 'Örnek kaydedilemedi. Ellerin kadrajda olduğundan ve kamera izninden emin olun.';
+      }
     } finally {
       stopStream(stream);
-      elements.teachingRecord.disabled = false;
+      teachingCapturePending = false;
+      elements.teachingRecord.disabled = privacyDisposed || !runtimeReady || !elements.teachingLabel.value;
+      refreshCameraControls();
+      if (!privacyDisposed) await updatePersonalStorageStatus();
     }
   });
   elements.teachingDelete.addEventListener('click', async () => {
@@ -562,6 +715,10 @@ async function initializeCameraTools() {
     });
     landmarkRuntime = createLandmarkRuntime({ manifest: runtimeManifest, baseUrl: new URL('./', location.href).href });
     await landmarkRuntime.initialize();
+    if (privacyDisposed) {
+      await landmarkRuntime.dispose();
+      return;
+    }
     personalTrainer = createPersonalTrainer({ runtime: landmarkRuntime, store: personalStore, minSamples: 3 });
     personalBackend = createPersonalRecognitionBackend({ store: personalStore });
     runtimeReady = true;
@@ -569,8 +726,10 @@ async function initializeCameraTools() {
     populateTeachingLabels();
   } catch (error) {
     console.error('camera_runtime_init_failed', error?.code ?? error?.message, JSON.stringify(error?.detail ?? null));
-    appState.transition('error');
-    elements.cameraStatus.textContent = 'Yerel kamera çalışma zamanı hazırlanamadı. Sayfayı yenileyip yeniden deneyin.';
+    if (!privacyDisposed) {
+      appState.transition('error');
+      elements.cameraStatus.textContent = 'Yerel kamera çalışma zamanı hazırlanamadı. Sayfayı yenileyip yeniden deneyin.';
+    }
   }
   refreshCameraControls();
 }

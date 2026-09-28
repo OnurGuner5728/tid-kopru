@@ -87,7 +87,7 @@ test('release inventory includes local runtime, personal recognition and cloud m
     'public/assets/avatar/saved-poses.json', 'public/assets/runtime/runtime-manifest.json',
     'public/landmark-runtime.mjs', 'public/landmark-worker.js', 'public/landmark-normalization.mjs', 'public/mediapipe-fileset.mjs',
     'public/personal-sign-store.mjs', 'public/personal-training.mjs', 'public/personal-sign-recognizer.mjs',
-    'public/hybrid-recognition.mjs', 'public/privacy-mode.mjs', 'public/cloud-session.mjs',
+    'public/hybrid-recognition.mjs', 'public/privacy-mode.mjs', 'public/media-capture-registry.mjs', 'public/cloud-session.mjs',
     'public/nvidia-candidate.mjs', 'public/service-worker.js', 'public/manifest.webmanifest',
     'public/vendor/mediapipe/LICENSE.txt', 'public/vendor/onnxruntime/LICENSE.txt',
     'public/vendor/three/LICENSE.txt',

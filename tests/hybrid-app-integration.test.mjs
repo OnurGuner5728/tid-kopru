@@ -22,13 +22,31 @@ test('public app composes local landmarks, personal recognition, display fallbac
   assert.match(source, /privacyController\.getState\(\)/u);
   assert.match(source, /navigator\.mediaDevices\.getUserMedia/u);
   assert.match(source, /cloudSession\.withKey/u);
+  assert.match(source, /captureRegistry\.dispose\(\)/u);
+  assert.match(source, /activeRecognitionController\?\.abort\(/u);
+  assert.match(source, /captureRegistry\.cancel\('camera'\)/u);
 });
 
 test('UI exposes candidate source, cancellation, replay controls, and personal-data deletion', async () => {
   const html = await readFile(new URL('../public/index.html', import.meta.url), 'utf8');
-  for (const id of ['camera-stop', 'camera-candidate-source', 'playback-speed', 'repeat-tid', 'step-tid', 'teaching-clear']) {
+  for (const id of ['camera-stop', 'camera-candidate-source', 'playback-speed', 'repeat-tid', 'step-tid', 'teaching-clear', 'teaching-storage-status']) {
     assert.match(html, new RegExp(`id="${id}"`, 'u'));
   }
   assert.match(html, /kişisel işaret/iu);
   assert.match(html, /uzman onaylı doğal TİD değildir/u);
+});
+
+test('personal storage persistence mode is surfaced by the teaching controls', async () => {
+  const source = await readFile(new URL('../public/app.mjs', import.meta.url), 'utf8');
+  assert.match(source, /personalStore\.getStorageMode\(\)/u);
+  assert.match(source, /teachingStorageStatus/u);
+});
+
+test('available verified camera model is loaded and participates in app recognition', async () => {
+  const source = await readFile(new URL('../public/app.mjs', import.meta.url), 'utf8');
+  assert.match(source, /new SignRecognitionClient/u);
+  assert.match(source, /cameraClient\.load\(/u);
+  assert.match(source, /cameraClient\.startUtterance\([\s\S]*?stream:/u);
+  assert.match(source, /cameraClient\.stopCapture\(/u);
+  assert.match(source, /onnxBackend/u);
 });

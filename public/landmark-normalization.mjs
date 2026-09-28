@@ -59,9 +59,9 @@ export function normalizeLandmarkFrame(result) {
   const pose = normalizePoints(poseRaw, 0, 11);
   const face = normalizePoints(faceRaw, 1, 33);
   if (!handsProvided && !hands.left && !hands.right && !pose && !face) throw codedError('empty_landmark_frame');
-
   return {
     timestampMs: result.timestampMs,
+    hasAnyLandmarks: Boolean(hands.left || hands.right || pose || face),
     handMask: { left: Boolean(hands.left), right: Boolean(hands.right) },
     hands,
     pose,

@@ -11,9 +11,11 @@ export function createPersonalTrainer({ runtime, store, minSamples = 3 } = {}) {
 
   const addSample = async (label, frames) => {
     if (typeof label !== 'string' || !label.trim() || !Array.isArray(frames) || !frames.length) throw codedError('empty_landmark_sample');
+    const quality = qualityFor(frames);
+    if (quality === 'low') throw codedError('personal_sample_quality_low');
     await store.addSample(label.trim(), { frames });
     const progress = await getProgress(label.trim());
-    return { ...progress, frameCount: frames.length, quality: qualityFor(frames) };
+    return { ...progress, frameCount: frames.length, quality };
   };
 
   const recordSample = async (label, options = {}) => {

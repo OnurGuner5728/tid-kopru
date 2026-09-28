@@ -19,7 +19,7 @@ Bu liste yayınlanan HTTPS sürümünde fiziksel Android Chrome ile tamamlanacak
 - [ ] **Durdur** kamera akışındaki bütün izleri kapatır; sayfadan ayrılınca kamera açık kalmaz.
 - [ ] Kişisel işaret en az üç örnek kaydedilmeden hazır sayılmaz.
 - [ ] En az üç örnekten sonra kişisel işaret adayı üretilebilir; düşük güvenli hareket “anlaşılamadı” sonucunda kalır.
-- [ ] Kişisel örnekler sayfa yeniden açılınca kalıcı olarak bulunur; ham görüntü saklanmaz.
+- [ ] Arayüz IndexedDB açıksa kişisel örneklerin cihazda kaldığını; açılamazsa yalnızca oturumda tutulacağını söyler; ham görüntü saklanmaz.
 - [ ] **Bu işareti sil** seçili etiketi, **Tüm kişisel veriyi sil** bütün kişisel örnekleri kaldırır; yeniden açılışta silinen veri geri gelmez.
 - [ ] Kamera adayı düzenlenebilir ve **Yanıt alanına aktar** tıklanmadan cevap alanını değiştirmez.
 - [ ] Cevap metni **Seslendir** ile okunur ve **Durdur** ile kesilir.
@@ -28,7 +28,7 @@ Bu liste yayınlanan HTTPS sürümünde fiziksel Android Chrome ile tamamlanacak
 
 - [ ] **Yalnızca cihazda** modunda kamera ve metin isteklerinde bulut servisine ağ çağrısı yoktur.
 - [ ] **Akıllı hibrit** modunda kişisel eşleştirme ve varsa yerel ONNX modeli kullanılır; mevcut paket cümle modeli içermediğini açıkça söyler.
-- [ ] **Bulut destekli** modda ayrı onay kutusu seçilmeden kısa klip gönderilmez.
+- [ ] **Bulut destekli** modda ayrı onay kutusu seçilmeden veya yerel güven 0,72 eşiğinin üstündeyken kısa klip gönderilmez.
 - [ ] NVIDIA ayarında boş veya geçersiz anahtar anlaşılır hata verir; genel amaçlı model sonucu “düzenlenebilir aday” olarak görünür.
 - [ ] Oturum anahtarı sayfa kapatılınca/gizlenince temizlenir; IndexedDB, localStorage, servis çalışanı önbelleği ve kaynak dosyalarda bulunmaz.
 - [ ] Mikrofon konuşma tanımanın tarayıcıya göre internet/uzak hizmet kullanabileceği görünürdür.
@@ -56,7 +56,7 @@ Bu liste yayınlanan HTTPS sürümünde fiziksel Android Chrome ile tamamlanacak
 - [ ] `public/landmark-runtime.mjs`, `public/landmark-worker.js`, `public/landmark-normalization.mjs`, `public/mediapipe-fileset.mjs`
 - [ ] `public/personal-sign-store.mjs`, `public/personal-training.mjs`, `public/personal-sign-recognizer.mjs`
 - [ ] `public/sign-recognition.mjs`, `public/sign-recognition-worker.js`, `public/onnx-runtime-loader.mjs`, `public/tid-to-turkish.mjs`
-- [ ] `public/hybrid-recognition.mjs`, `public/privacy-mode.mjs`, `public/cloud-session.mjs`, `public/nvidia-candidate.mjs`
+- [ ] `public/hybrid-recognition.mjs`, `public/privacy-mode.mjs`, `public/media-capture-registry.mjs`, `public/cloud-session.mjs`, `public/nvidia-candidate.mjs`
 - [ ] `public/service-worker.js`, `public/sw-policy.js`, `public/manifest.webmanifest`, `public/icons/icon.svg`, `public/icons/maskable.svg`
 - [ ] `public/vendor/mediapipe/LICENSE.txt`, `public/vendor/onnxruntime/LICENSE.txt`, `public/vendor/three/LICENSE.txt`
 - [ ] `public/vendor/three/three.module.js` ve gereken addon modülleri
