@@ -36,12 +36,14 @@
     if (request.method !== 'GET') return null;
 
     const cached = await cache.match(request.url);
-    if (cached) return cached;
+    const freshOnOpen = request.mode === 'navigate' || /\.(?:mjs|js|css|html|json|webmanifest)$/u.test(new URL(request.url).pathname);
+    if (cached && !freshOnOpen) return cached;
 
     let response;
     try {
       response = await fetcher(request);
     } catch {
+      if (cached) return cached;
       if (request.mode === 'navigate') {
         const shell = await cache.match(shellUrl);
         if (shell) return shell;

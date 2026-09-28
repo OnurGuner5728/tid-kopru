@@ -20,7 +20,7 @@ test('public app composes local landmarks, personal recognition, display fallbac
     'createTidDisplayPlan', 'renderLetterCards', 'createAppStateMachine',
   ]) assert.match(source, new RegExp(dependency, 'u'));
   assert.match(source, /privacyController\.getState\(\)/u);
-  assert.match(source, /navigator\.mediaDevices\.getUserMedia/u);
+  assert.match(source, /requestCameraWithTimeout\(navigator\.mediaDevices/u);
   assert.match(source, /cloudSession\.withKey/u);
   assert.match(source, /captureRegistry\.dispose\(\)/u);
   assert.match(source, /activeRecognitionController\?\.abort\(/u);

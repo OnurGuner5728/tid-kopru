@@ -66,7 +66,7 @@ test('keyboard focus, retry touch size, and reduced-motion handling remain visib
 
 test('speech permission failures remain visible after recognition ends', () => {
   assert.match(app, /let speechErrorMessage = '';/u);
-  assert.match(app, /recognition\.addEventListener\('end', \(\) => setListeningState\(false, speechErrorMessage \|\| 'Hazır'\)\)/u);
+  assert.match(app, /recognition\.addEventListener\('end', \(\) => \{[\s\S]*?setListeningState\(false, speechErrorMessage \|\| 'Hazır'\)/u);
   assert.match(app, /speechErrorMessage = messages\[event\.error\] \?\? 'Konuşma tanınamadı\.'/u);
 });
 

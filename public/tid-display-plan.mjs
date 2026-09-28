@@ -72,6 +72,7 @@ function summarizeFeatures(tokens) {
 
 function addGapSegments(segments, gap, warnings) {
   for (const symbol of Array.from(gap).filter((character) => character.trim())) {
+    if (/[.,;:]/u.test(symbol)) continue;
     segments.push({ kind: 'unsupported', label: `Desteklenmeyen simge: ${symbol}`, symbol, source: 'fallback' });
     warnings.push(`“${symbol}” simgesi için işaret veya harf kartı yok.`);
   }

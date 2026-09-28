@@ -44,6 +44,12 @@ test('predicate person survives while known stems become dictionary poses', () =
   assert.equal(plan.sourceClass, 'dictionary-sequence');
 });
 
+test('ordinary sentence punctuation does not turn known poses into card fallback', () => {
+  const plan = createTidDisplayPlan('Sen iyisin.', resources);
+  assert.equal(plan.sourceClass, 'dictionary-sequence');
+  assert.deepEqual(plan.segments.map((segment) => segment.label), ['SEN', 'IYI']);
+});
+
 test('negative predicates keep polarity and person', () => {
   const plan = createTidDisplayPlan('Ben iyi değilim', resources);
 

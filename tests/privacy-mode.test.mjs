@@ -33,7 +33,7 @@ test('stopMediaStream stops every track once across repeated cleanup', () => {
   assert.deepEqual(calls, [1, 1, 1]);
 });
 
-test('pagehide and hidden visibility dispose registered resources', () => {
+test('pagehide disposes resources while hidden visibility suspends without disabling reuse', () => {
   const pageTarget = new EventTarget();
   const documentTarget = new EventTarget();
   Object.defineProperty(documentTarget, 'visibilityState', { value: 'visible', writable: true });
@@ -45,10 +45,21 @@ test('pagehide and hidden visibility dispose registered resources', () => {
   assert.equal(pageHideDisposals, 1);
 
   let hiddenDisposals = 0;
-  const second = createPrivacyModeController({ pageTarget, documentTarget });
+  let suspensions = 0;
+  const second = createPrivacyModeController({ pageTarget, documentTarget, onSuspend: () => { suspensions += 1; } });
   second.registerDisposer(() => { hiddenDisposals += 1; });
+  second.setMode(TRANSLATION_MODES.HYBRID);
+  second.grantCloudConsent();
   documentTarget.visibilityState = 'hidden';
   documentTarget.dispatchEvent(new Event('visibilitychange'));
+  assert.equal(hiddenDisposals, 0);
+  assert.equal(suspensions, 1);
+  assert.equal(second.getState().cloudConsent, false);
+  second.setMode(TRANSLATION_MODES.LOCAL);
+  documentTarget.visibilityState = 'visible';
+  documentTarget.dispatchEvent(new Event('visibilitychange'));
+  assert.equal(suspensions, 1);
+  second.dispose();
   assert.equal(hiddenDisposals, 1);
 });
 

@@ -245,11 +245,25 @@ test('app shell excludes large avatar downloads and includes its runtime depende
 });
 
 test('app shell contains only the current release cache prefix policy', () => {
-  assert.match(workerSource, /const CACHE_NAME = 'tid-kopru-v8'/u);
+  assert.match(workerSource, /const CACHE_NAME = 'tid-kopru-v11'/u);
   assert.match(workerSource, /\.\/kullanim-kilavuzu\.html/u);
   assert.match(workerSource, /shouldDeleteCache\(name, CACHE_NAME\)/u);
   assert.match(workerSource, /getReviewedMediaResponse/u);
   assert.match(workerSource, /getCameraModelResponse/u);
+});
+
+test('app code refreshes online and falls back to its cached copy offline', async () => {
+  let online = true;
+  const cache = { match: async () => new Response('old app'), put: async () => {} };
+  const fetcher = async () => {
+    if (!online) throw new Error('offline');
+    return new Response('new app');
+  };
+  const options = { request: request('https://tid.test/app.mjs'), cache, fetcher,
+    origin: 'https://tid.test', shellUrl: 'https://tid.test/index.html' };
+  assert.equal(await (await getOfflineAwareResponse(options)).text(), 'new app');
+  online = false;
+  assert.equal(await (await getOfflineAwareResponse(options)).text(), 'old app');
 });
 
 test('service worker never caches private camera, landmark, key, or provider requests', () => {

@@ -20,6 +20,7 @@ export function createPrivacyModeController({
   initialMode = TRANSLATION_MODES.LOCAL,
   onChange = () => {},
   onDispose = () => {},
+  onSuspend = () => {},
   pageTarget = globalThis.window,
   documentTarget = globalThis.document,
 } = {}) {
@@ -76,7 +77,10 @@ export function createPrivacyModeController({
 
   const onPageHide = () => dispose();
   const onVisibilityChange = () => {
-    if (documentTarget?.visibilityState === 'hidden') dispose();
+    if (documentTarget?.visibilityState !== 'hidden' || disposed) return;
+    cloudConsent = false;
+    emit();
+    try { onSuspend(); } catch { /* keep the controller usable after a failed cleanup */ }
   };
   pageTarget?.addEventListener?.('pagehide', onPageHide);
   documentTarget?.addEventListener?.('visibilitychange', onVisibilityChange);
