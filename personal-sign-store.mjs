@@ -41,13 +41,14 @@ export function createPersonalSignStore({ indexedDB = globalThis.indexedDB, dbNa
         const transaction = db.transaction('samples', mode);
         const store = transaction.objectStore('samples');
         const request = operation(store);
+        let requestResult;
         if (request) {
-          request.onsuccess = () => resolve(request.result);
+          request.onsuccess = () => { requestResult = request.result; };
           request.onerror = () => reject(request.error);
-        } else {
-          transaction.oncomplete = () => resolve(true);
-          transaction.onerror = () => reject(transaction.error);
         }
+        transaction.oncomplete = () => resolve(request ? requestResult : true);
+        transaction.onerror = () => reject(transaction.error);
+        transaction.onabort = () => reject(transaction.error ?? codedError('personal_store_aborted'));
       } catch (error) { reject(error); }
     }).catch(() => { persistentStoreFailed = true; return null; });
   };

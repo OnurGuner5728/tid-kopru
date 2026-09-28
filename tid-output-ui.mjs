@@ -9,7 +9,7 @@ const STATUS_TEXT = {
 const SOURCE_LABELS = {
   'reviewed-tid': 'Onaylı TİD',
   'dictionary-sequence': 'Sözlük dizimi',
-  'fallback-cards': 'Harf kartları / yapay zekâ adayı',
+  'fallback-cards': 'Harf kartları',
 };
 
 export function createTidOutputController({
@@ -28,6 +28,7 @@ export function createTidOutputController({
   translateText,
   onMediaSegment = () => {},
   onRetry = null,
+  autoPlayOnConfirm = false,
 } = {}) {
   if (!input || !confirmButton || !playButton || !stopButton || !retryButton || !sourceText || !status || !gloss || !progress
     || typeof translateText !== 'function' || typeof player?.play !== 'function' || typeof player?.stop !== 'function') {
@@ -139,10 +140,12 @@ export function createTidOutputController({
     status.dataset.state = 'loading';
     progress.textContent = '';
     updateControls();
+    let playConfirmedResult = false;
     try {
       const result = await translateText(submittedText);
       if (requestGeneration !== generation || input.value !== submittedText) return;
       renderTidTranslation(result);
+      playConfirmedResult = autoPlayOnConfirm && currentState === 'ready';
     } catch {
       if (requestGeneration === generation) setError();
     } finally {
@@ -152,6 +155,7 @@ export function createTidOutputController({
         updateControls();
       }
     }
+    if (playConfirmedResult && requestGeneration === generation) await play();
   }
 
   async function play() {

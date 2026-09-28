@@ -10,7 +10,7 @@ import { createCloudSession } from './cloud-session.mjs';
 import { createLandmarkRuntime, verifyRuntimeManifestFiles } from './landmark-runtime.mjs';
 import { createPersonalSignStore } from './personal-sign-store.mjs';
 import { createPersonalTrainer } from './personal-training.mjs';
-import { createPersonalRecognitionBackend } from './personal-sign-recognizer.mjs';
+import { createPersonalRecognitionBackend, personalPhraseLabel, personalPhraseText } from './personal-sign-recognizer.mjs';
 import { createHybridRecognizer } from './hybrid-recognition.mjs';
 import { createNvidiaCandidateProvider } from './nvidia-candidate.mjs';
 import { createTidDisplayPlan } from './tid-display-plan.mjs';
@@ -69,6 +69,7 @@ const elements = {
   cloudKeyClear: document.querySelector('#cloud-key-clear'),
   cloudKeyStatus: document.querySelector('#cloud-key-status'),
   teachingLabel: document.querySelector('#teaching-label'),
+  teachingCustomText: document.querySelector('#teaching-custom-text'),
   teachingRecord: document.querySelector('#teaching-record'),
   teachingDelete: document.querySelector('#teaching-delete'),
   teachingClear: document.querySelector('#teaching-clear'),
@@ -93,6 +94,7 @@ let cameraManifest = null;
 let cameraClient = null;
 let cameraInstalled = false;
 let cameraCandidateReady = false;
+let speakApprovedText = () => false;
 let privacyController;
 const cloudSession = createCloudSession();
 const personalStore = createPersonalSignStore();
@@ -304,12 +306,11 @@ function initializeTextToSpeech() {
     return;
   }
 
-  elements.speakButton.addEventListener('click', () => {
-    const text = elements.replyText.value.trim();
+  function speakText(text) {
     if (!text) {
       elements.ttsStatus.textContent = 'Önce seslendirilecek yanıtı yazın.';
       elements.replyText.focus();
-      return;
+      return false;
     }
     speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
@@ -329,12 +330,15 @@ function initializeTextToSpeech() {
       elements.speakButton.disabled = false;
     });
     speechSynthesis.speak(utterance);
-  });
+    return true;
+  }
+  elements.speakButton.addEventListener('click', () => speakText(elements.replyText.value.trim()));
   elements.stopSpeech.addEventListener('click', () => {
     speechSynthesis.cancel();
     elements.speakButton.disabled = false;
     elements.ttsStatus.textContent = 'Seslendirme durduruldu.';
   });
+  return speakText;
 }
 
 async function loadAvatar() {
@@ -351,7 +355,7 @@ async function loadAvatar() {
     }
     await avatar.initialize();
     if (translationResources) translationResources.poseNames = Object.keys(avatar.poses);
-    populateTeachingLabels();
+    await populateTeachingLabels();
     elements.avatarLoader.hidden = true;
     elements.avatarStatus.textContent = 'Sözlük gösterici hazır';
   } catch (error) {
@@ -385,11 +389,12 @@ function refreshCameraControls() {
   elements.cameraStart.disabled = privacyDisposed || !runtimeReady || busy || teachingCapturePending || Boolean(activeTeachingStream);
   elements.cameraFinish.disabled = privacyDisposed || appState.getState() !== 'capturing';
   elements.cameraStop.disabled = privacyDisposed || !['requesting-permission', 'capturing', 'processing'].includes(appState.getState());
+  elements.cameraDownload.hidden = cameraManifest?.available !== true;
   elements.cameraDownload.disabled = privacyDisposed || cameraManifest?.available !== true || cameraInstalled;
 }
 
 function sourceLabel(source) {
-  return ({ personal: 'Kişisel cihaz içi eşleşme', 'verified-onnx': 'Doğrulanmış yerel model adayı', 'cloud-candidate': 'NVIDIA bulut adayı', 'reviewed-mapping': 'Uzman onaylı gloss eşlemesi' })[source] ?? 'Aday bulunamadı';
+  return ({ personal: 'Kişisel cihaz içi eşleşme', 'verified-onnx': 'Doğrulanmış yerel model adayı', 'cloud-candidate': 'NVIDIA bulut adayı', 'reviewed-mapping': 'Uzman onaylı gloss eşlemesi', manual: 'Tanıma başarısız · elle girilen metin' })[source] ?? 'Aday bulunamadı';
 }
 
 function renderCameraCandidate(result) {
@@ -400,18 +405,32 @@ function renderCameraCandidate(result) {
   elements.cameraConfirm.disabled = true;
   elements.cameraCandidateSource.textContent = sourceLabel(result?.source);
   if (!result?.text || result.reason === 'anlaşılamadı') {
+    cameraCandidateReady = true;
+    elements.cameraCandidateText.disabled = false;
+    elements.cameraCandidateSource.textContent = sourceLabel('manual');
+    elements.cameraCandidateText.placeholder = 'İşaret anlaşılamadı. Gördüğünüz ifadeyi biliyorsanız buraya yazın.';
     appState.transition('idle');
-    elements.cameraStatus.textContent = 'Güvenilir bir eşleşme bulunamadı. Bir işareti üç kez öğretebilir veya adayı elle yazabilirsiniz.';
+    elements.cameraStatus.textContent = 'Güvenilir eşleşme bulunamadı. İfadeyi biliyorsanız elle yazıp seslendirebilir veya yeniden deneyebilirsiniz.';
     refreshCameraControls();
     return;
   }
   elements.cameraCandidateText.value = result.text;
+  elements.cameraCandidateText.placeholder = 'Gerekirse metni düzeltin.';
   elements.cameraEdit.disabled = false;
   elements.cameraConfirm.disabled = false;
   cameraCandidateReady = true;
   appState.transition('candidate');
   elements.cameraStatus.textContent = `${sourceLabel(result.source)} hazır. Sonucu kontrol edin; yalnızca onayınızla yanıt alanına aktarılır.`;
   refreshCameraControls();
+}
+
+function clearCameraCandidate() {
+  cameraCandidateReady = false;
+  elements.cameraCandidateText.value = '';
+  elements.cameraCandidateText.disabled = true;
+  elements.cameraEdit.disabled = true;
+  elements.cameraConfirm.disabled = true;
+  elements.cameraCandidateSource.textContent = 'Henüz aday yok.';
 }
 
 function stopStream(stream = activeCameraStream) {
@@ -499,11 +518,25 @@ async function recognizeCapturedUtterance(onnxCandidate = null) {
   }
 }
 
-function populateTeachingLabels() {
+async function populateTeachingLabels(selectedLabel = '') {
   const names = Object.keys(avatar?.poses ?? {}).sort((left, right) => left.localeCompare(right, 'tr'));
-  elements.teachingLabel.replaceChildren(new Option('İşaret seçin', ''), ...names.map((name) => new Option(name, name)));
-  elements.teachingStatus.textContent = `${names.length} sözlük işareti öğretmeye hazır. Her işareti en az üç kez kaydedin.`;
+  const phrases = (await personalStore.listLabels()).filter((label) => personalPhraseText(label) !== null);
+  elements.teachingLabel.replaceChildren(new Option('İşaret veya kayıtlı cümle seçin', ''), ...names.map((name) => new Option(name, name)), ...phrases.map((label) => new Option(`Cümle: ${personalPhraseText(label)}`, label)));
+  elements.teachingLabel.value = selectedLabel;
+  elements.teachingStatus.textContent = `${names.length} sözlük işareti ve ${phrases.length} kişisel cümle seçilebilir. Her biri için en az üç örnek kaydedin.`;
   void updatePersonalStorageStatus();
+}
+
+function teachingTarget() {
+  const customText = elements.teachingCustomText.value.trim();
+  return customText ? personalPhraseLabel(customText) : elements.teachingLabel.value;
+}
+
+function refreshTeachingControls() {
+  const target = teachingTarget();
+  elements.teachingRecord.disabled = privacyDisposed || !runtimeReady || teachingCapturePending || !target;
+  elements.teachingDelete.disabled = privacyDisposed || !target;
+  return target;
 }
 
 async function updatePersonalStorageStatus() {
@@ -514,6 +547,9 @@ async function updatePersonalStorageStatus() {
 }
 
 async function initializeCameraTools() {
+  elements.cameraCandidateText.addEventListener('input', () => {
+    elements.cameraConfirm.disabled = !cameraCandidateReady || !elements.cameraCandidateText.value.trim();
+  });
   elements.cameraEdit.addEventListener('click', () => {
     if (!cameraCandidateReady) return;
     elements.cameraCandidateText.disabled = false;
@@ -524,8 +560,11 @@ async function initializeCameraTools() {
     if (!cameraCandidateReady || !text) return;
     elements.replyText.value = text;
     elements.replyText.dispatchEvent(new Event('input', { bubbles: true }));
-    elements.replyText.focus();
-    elements.cameraStatus.textContent = 'Onayladığınız aday yanıt alanına aktarıldı.';
+    if (speakApprovedText(text)) {
+      elements.cameraStatus.textContent = 'Onayladığınız metin Türkçe seslendiriliyor.';
+    } else {
+      elements.cameraStatus.textContent = 'Seslendirme bu tarayıcıda kullanılamıyor; metin yanıt alanına aktarıldı.';
+    }
   });
 
   elements.cameraDownload.addEventListener('click', async () => {
@@ -554,6 +593,7 @@ async function initializeCameraTools() {
 
   elements.cameraStart.addEventListener('click', async () => {
     if (privacyDisposed || !runtimeReady || teachingCapturePending || ['requesting-permission', 'capturing', 'processing'].includes(appState.getState()) || activeTeachingStream) return;
+    clearCameraCandidate();
     const requestToken = captureRegistry.begin('camera');
     appState.transition('requesting-permission');
     refreshCameraControls();
@@ -643,22 +683,26 @@ async function initializeCameraTools() {
     captureRegistry.cancel('camera');
     discardMediaRecording();
     stopStream();
+    clearCameraCandidate();
     appState.transition('idle');
     elements.cameraStatus.textContent = 'Kamera durduruldu; kayıt ve aday silindi.';
     refreshCameraControls();
   });
 
   elements.teachingLabel.addEventListener('change', async () => {
-    const label = elements.teachingLabel.value;
-    elements.teachingRecord.disabled = !label || !runtimeReady;
-    elements.teachingDelete.disabled = !label;
+    elements.teachingCustomText.value = '';
+    const label = refreshTeachingControls();
     if (label && personalTrainer) {
       const progress = await personalTrainer.getProgress(label);
-      elements.teachingStatus.textContent = `${label}: ${progress.sampleCount} / ${progress.minSamples} örnek${progress.ready ? ' · tanımaya hazır' : ''}`;
+      elements.teachingStatus.textContent = `${personalPhraseText(label) ?? label}: ${progress.sampleCount} / ${progress.minSamples} örnek${progress.ready ? ' · tanımaya hazır' : ''}`;
     }
   });
+  elements.teachingCustomText.addEventListener('input', () => {
+    if (elements.teachingCustomText.value.trim()) elements.teachingLabel.value = '';
+    refreshTeachingControls();
+  });
   elements.teachingRecord.addEventListener('click', async () => {
-    const label = elements.teachingLabel.value;
+    const label = teachingTarget();
     if (privacyDisposed || !label || !runtimeReady || activeCameraStream || ['requesting-permission', 'capturing', 'processing'].includes(appState.getState())) return;
     const requestToken = captureRegistry.begin('teaching');
     teachingCapturePending = true;
@@ -674,10 +718,14 @@ async function initializeCameraTools() {
       elements.cameraPreview.hidden = false;
       await elements.cameraPreview.play();
       if (!captureRegistry.isCurrent('teaching', requestToken)) return;
-      const frames = await landmarkRuntime.captureSample({ video: elements.cameraPreview, durationMs: 1800 });
+      const frames = await landmarkRuntime.captureSample({ video: elements.cameraPreview, durationMs: personalPhraseText(label) === null ? 1800 : 5000 });
       if (!captureRegistry.isCurrent('teaching', requestToken)) return;
       const result = await personalTrainer.addSample(label, frames);
-      elements.teachingStatus.textContent = `${label}: ${result.sampleCount} / ${result.minSamples} örnek · kalite ${result.quality}${result.ready ? ' · tanımaya hazır' : ''}`;
+      if (personalPhraseText(label) !== null) {
+        await populateTeachingLabels(label);
+        elements.teachingCustomText.value = '';
+      }
+      elements.teachingStatus.textContent = `${personalPhraseText(label) ?? label}: ${result.sampleCount} / ${result.minSamples} örnek · kalite ${result.quality}${result.ready ? ' · tanımaya hazır' : ''}`;
     } catch {
       if (captureRegistry.isCurrent('teaching', requestToken) && !privacyDisposed) {
         elements.teachingStatus.textContent = 'Örnek kaydedilemedi. Ellerin kadrajda olduğundan ve kamera izninden emin olun.';
@@ -685,19 +733,24 @@ async function initializeCameraTools() {
     } finally {
       stopStream(stream);
       teachingCapturePending = false;
-      elements.teachingRecord.disabled = privacyDisposed || !runtimeReady || !elements.teachingLabel.value;
+      refreshTeachingControls();
       refreshCameraControls();
       if (!privacyDisposed) await updatePersonalStorageStatus();
     }
   });
   elements.teachingDelete.addEventListener('click', async () => {
-    const label = elements.teachingLabel.value;
+    const label = teachingTarget();
     if (!label) return;
     await personalTrainer.deleteLabel(label);
-    elements.teachingStatus.textContent = `${label} için kişisel örnekler silindi.`;
+    if (personalPhraseText(label) !== null) await populateTeachingLabels();
+    elements.teachingStatus.textContent = `${personalPhraseText(label) ?? label} için kişisel örnekler silindi.`;
+    refreshTeachingControls();
   });
   elements.teachingClear.addEventListener('click', async () => {
     await personalTrainer.clear();
+    elements.teachingCustomText.value = '';
+    await populateTeachingLabels();
+    refreshTeachingControls();
     elements.teachingStatus.textContent = 'Tüm kişisel işaret örnekleri bu cihazdan silindi.';
   });
 
@@ -772,6 +825,7 @@ function initializeTidOutput() {
     gloss: elements.tidGloss,
     progress: elements.tidProgress,
     player: translationPlayer,
+    autoPlayOnConfirm: true,
     translateText: (text) => {
       if (!translationResources) throw new Error('translation_resources_unavailable');
       return createTidDisplayPlan(text, translationResources);
@@ -873,7 +927,7 @@ elements.avatarRetry.addEventListener('click', loadAvatar);
 Promise.resolve(initializePwa()).finally(() => { void initializeCameraTools(); });
 initializeSpeechRecognition();
 initializeTextActions();
-initializeTextToSpeech();
+speakApprovedText = initializeTextToSpeech() ?? (() => false);
 updateCharacterCount();
 
 
