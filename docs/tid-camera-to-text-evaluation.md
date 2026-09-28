@@ -1,34 +1,44 @@
-# TİD kamera → Türkçe değerlendirme
+# Kamera → Türkçe adayı değerlendirmesi
 
 **Tarih:** 25 Eylül 2026
-**Durum:** YAYIN ENGELLİ · KAMERA KAPALI
-**Model sürümü:** Yok (`sentence-model-manifest.json`: `available: false`)
-**İçerik sürümü:** `pilot-content-0`
 
-Bu rapor ölçülmüş sonuçları ve eksik kanıtları ayırır. Yazılım testlerinin geçmesi, TİD tanıma başarımı ölçümü sayılmaz.
+**Yerel çalışma zamanı:** MediaPipe Tasks Vision 1.0.1
 
-## Gerçek veri ve insan değerlendirmesi
+**İsteğe bağlı ONNX çalışma zamanı:** ONNX Runtime Web 1.30.0
 
-| Kapı | Gereken | Mevcut kanıt | Sonuç |
-|---|---:|---:|---|
-| İzinli, zaman kodlu TİD cümle klibi | En az 300 | 0 | Açık |
-| Eğitimde görülmemiş değerlendirici | En az 20 imzalayan kişi | 0 | Açık |
-| Bağımsız akıcı TİD değerlendiricisi | 2 ve anlaşmazlık hakemi | 0 | Açık |
-| Türkçe anlam kabulü | Uzlaştırma sonrası en az %90 | Ölçülmedi | Açık |
-| Destek dışı yanlış kabul | En fazla %5 | Ölçülmedi | Açık |
-| Hedef Android p95 öneri gecikmesi | Ölçülmüş cihaz sonucu | Ölçülmedi | Açık |
-| Yüz yüze TİD kullanıcı oturumu | En az 30 | 0 | Açık |
+**Genel TİD cümle modeli:** Yok (`sentence-model-manifest.json`: `available: false`)
 
-İzin, TİD danışmanı onayı, katılımcı ve rıza eşleme kayıtları ile ham çalışma verisi yoktur. Bu rapora sentetik testlerden insan sonucu veya başarı oranı türetilmemiştir.
+**Mevcut işlev:** Kişisel işaret öğretme ve eşleştirme
 
-## Dağıtım paketindeki durum
+## Çalışan akış
 
-- TİD→Türkçe aday eşleştiricisi yalnızca gloss sırası ve non-manual işaretleri iki bağımsız değerlendirici tarafından onaylanmış cümle kaydıyla eşleştirir. Dağıtım gloss sözlüğü, cümle, şablon ve onaylı aday bakımından boştur.
-- İstemci ve worker kodu; aynı-kaynak ve SHA-256 denetimi, açık kullanıcı eylemi, kare aktarımı, ret, hata, durdurma ve kamera izlerini kapatma protokolünü içerir.
-- `sentence-model-manifest.json` kullanılabilir model veya dosya bildirmez. Lisanslı MediaPipe/ONNX çalışma zamanı ve eğitilmiş cümle ONNX modeli pakette yoktur.
-- Model indirme/başlatma düğmeleri bu nedenle kapalıdır; sayfa yüklemesi kamera izni istemez. Kullanıcıya MediaPipe kullanım/performans ölçümü ile sistem ortamı verilerinin Google'a gönderilebileceği bildirilir; sıfır ağ trafiği vaadi verilmez.
-- Model dosyası hazır olduğunda tasarlanan indirme akışı dosyaları aynı kaynaktan getirir, karmaları doğrular ve ancak başarılı kurulumdan sonra eski `tid-camera-model-*` önbelleğini kaldırır. Kamera kareleri ve landmark'lar önbelleğe alınmaz.
+- Kamera yalnızca kullanıcı **Kamerayı aç** düğmesine bastığında izin ister.
+- MediaPipe el, yüz ve gövde landmark'larını cihazda çıkarır.
+- Bir sözlük etiketi en az üç hareket örneğiyle kişisel olarak öğretilebilir.
+- Ham kamera görüntüsü kişisel veri deposuna yazılmaz; yalnızca normalize edilmiş sayısal hareket dizileri IndexedDB'de saklanır.
+- Kişisel örnekler DTW tabanlı, uyarlanır eşikle karşılaştırılır. Eşik aşılmazsa aday üretilmez.
+- Kamera durdurulduğunda veya sayfa gizlendiğinde medya izleri bırakılır.
+- Sonuç düzenlenebilir Türkçe adaydır; kullanıcı **Yanıt alanına aktar** demeden cevap veya ses üretmez.
+- Tek etiket veya bütün kişisel veri kullanıcı tarafından silinebilir.
 
-## Yayın kararı
+## Hibrit kaynak sırası
 
-Bu yön çalışan bir kamera çevirisi olarak kullanılamaz. Gerekli veri, lisanslı çalışma zamanı, eğitimli model, uzman incelemesi ve cihaz/alan kanıtları sağlanmadan `available` değeri `true` yapılmamalı ve kamera açılmamalıdır.
+1. Kişisel yerel eşleştirme.
+2. Varsa SHA-256 doğrulanmış yerel ONNX cümle modeli. Mevcut pakette yoktur.
+3. Yalnızca **Bulut destekli** mod, ayrı kısa klip izni ve oturum anahtarı varsa NVIDIA genel amaçlı video adayı.
+
+NVIDIA sonucu doğrulanmış TİD çevirisi değildir. Güveni 0,55 ile sınırlandırılır, kaynağı ve uyarıları gösterilir ve her zaman kullanıcı onayı ister. API anahtarı kalıcı depoya yazılmaz.
+
+## Doğal konuşma tanıma kanıtı
+
+| Kapı | Gereken | Mevcut | Durum |
+| --- | ---: | ---: | --- |
+| İzinli, zaman kodlu held-out TİD klibi | En az 300 klip | 0 / 300 | Bekliyor |
+| Eğitimde görülmemiş işaretleyici | En az 20 kişi | 0 | Bekliyor |
+| Bağımsız akıcı TİD değerlendiricisi | İki bağımsız kişi | 0 | Bekliyor |
+| Türkçe anlam kabulü | En az %90 | Ölçülmedi | Bekliyor |
+| Destek dışı yanlış kabul | En fazla %5 | Ölçülmedi | Bekliyor |
+| Hedef Android doğruluk/gecikme | Ölçülmüş cihaz sonucu | Ölçülmedi | Bekliyor |
+| Yüz yüze TİD kullanıcı oturumu | En az 30 oturum | 0 | Bekliyor |
+
+Bu nedenle mevcut sürüm kişisel olarak öğretilen sınırlı işaretlerde yardımcı aday üretir; bilinmeyen tüm TİD konuşmalarını çözen genel kamera çevirmeni olarak değerlendirilmez. Fiziksel Android kamera, performans, ısınma ve erişilebilirlik ölçümü yapılmadı.

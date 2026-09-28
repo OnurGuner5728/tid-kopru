@@ -1,74 +1,75 @@
-# Yayın ve Android cihaz kontrol listesi
+# Android ve yayın kontrol listesi
 
-**Durum: ÇEVİRİ YAYINI ENGELLENMİŞTİR.** TİD uzman değerlendirmesi, lisanslı cümle medyası, gerçek kamera modeli ve fiziksel Android denemesi açık yayın kapılarıdır. `rain.glb` karakter modeli hakları doğrulanmadığı için kamuya açık kaynak ve site paketine dahil değildir. Bir kutuyu yalnızca ölçülen sonuç, cihaz ve tarih kaydedildikten sonra işaretleyin. Güncel içerik sayımları [Türkçe→TİD değerlendirme raporundadır](tid-text-to-sign-evaluation.md).
+**Tarih:** 25 Eylül 2026
 
-## Dağıtım dosyaları ve lisanslar
+**Durum:** Masaüstü tarayıcı doğrulaması sürüyor; fiziksel Android doğrulaması yapılmadı.
 
-Yayın öncesi aşağıdaki her dosyanın kaynak, sürüm ve lisansını paketle karşılaştırın.
+**Dil kapsamı:** 123 sözlük poz, 0 uzman onaylı doğal TİD cümle.
 
-- [ ] `public/app.mjs` — onaylı Türkçe→TİD arayüzü ve mikrofonun sağlayıcıya bağlı olabileceği uyarısı.
-- [ ] `public/avatar.mjs` — avatar yükleme ve yalnızca doğrulanmış içerik için poz oynatma.
-- [ ] `public/assets/avatar/rain.glb` — kamu paketine dahil değildir; yazılı yeniden dağıtım izni doğrulanmadan eklenmemelidir.
-- [ ] `public/assets/avatar/saved-poses.json` — SignBridge kaynaklı poz verisi; dağıtım paketi `public/SIGNBRIDGE-LICENSE.txt` lisans metnini içerir.
-- [ ] `public/assets/tid/content-manifest.json` — içerik sürümü, reviewed-content ve gloss→Türkçe özetleri ve medya hak/karmaları.
-- [ ] `public/assets/tid/gloss-to-turkish.json`, `public/assets/tid/sentence-model-manifest.json` — hash-bağlı ters yön içeriği ve model durumu; ikisi de şu an cümle eşleşmesi/model dosyası içermez.
-- [ ] `public/assets/tid/reviewed-content.json` — gerçek TİD incelemesi ve karar bilgisi bulunan cümle kayıtları; şu an boş.
-- [ ] `public/assets/tid/morphology-rules.json` — Türkçe çözümleme kuralları; tek başına TİD karşılığı değildir.
-- [ ] `public/avatar.mjs`, `public/tid-media-player.mjs`, `public/tid-output-ui.mjs`, `public/tid-transfer.mjs`, `public/turkish-morphology.mjs` — avatar, medya oynatma, arayüz, onaylı aktarım ve çözümleme modülleri.
-- [ ] `public/tid-to-turkish.mjs`, `public/sign-recognition.mjs`, `public/sign-recognition-worker.js`, `public/onnx-runtime-loader.mjs` — onaylı ters yön eşleştirme, kontrollü kamera istemcisi ve doğrulanmış yerel model yükleyicisi.
-- [ ] `public/matcher.mjs` — eski birebir eşleştirici; genel TİD çevirisi iddiası için kullanılmıyor.
-- [ ] `public/index.html`, `public/styles.css`, `public/manifest.webmanifest` — Türkçe arayüz, durum metinleri, görünür odağı ve uygulama kurulumu. `manifest.webmanifest` simge yolları ve ikonları Android'de kontrol edilmelidir.
-- [ ] `public/service-worker.js`, `public/sw-policy.js` — uygulama kabuğu ve manifestteki, lisans/karması doğrulanan medya önbelleği.
-- [ ] `public/icons/icon.svg`, `public/icons/maskable.svg` — manifest simgeleri; Android başlatıcısında kırpılmayı denetleyin.
-- [ ] `public/vendor/three/three.module.js`, `public/vendor/three/addons/loaders/GLTFLoader.js`, `public/vendor/three/addons/controls/OrbitControls.js`, `public/vendor/three/addons/utils/BufferGeometryUtils.js` — Three.js sürüm ve MIT bildirimleriyle birlikte.
-- [ ] Depo kökündeki `ASSET-NOTICE.txt` ve `SIGNBRIDGE-LICENSE.txt` kaynak paketinde; `public/ASSET-NOTICE.txt`, `public/SIGNBRIDGE-LICENSE.txt` ve `public/vendor/three/LICENSE.txt` statik dağıtımda tutulur.
+Bu liste yayınlanan HTTPS sürümünde fiziksel Android Chrome ile tamamlanacaktır. Bir madde yalnızca cihaz modeli, Android/Chrome sürümü, tarih ve gözlenen sonuç kaydedilince işaretlenir.
 
-### İçerik ve varlık yayını
+## Kullanıcı akışı
 
-- [ ] `pilot-content-0` şu anda 0 cümle, 0 üretken kalıp ve 0 TİD medya varlığı içerir. Bu sayı artarsa yeni bir içerik sürümü, bağlanan kaynak/inceleme ve toplu rapor oluşturun.
-- [ ] Her yeni karşılık iki bağımsız akıcı TİD değerlendiricisinden onay alır; anlaşmazlığı üçüncü hakem çözer. Sentetik test incelemeleri sayılmaz.
-- [ ] Her oynatılabilir video veya avatar animasyonu için kaynağı, lisans belgesi/izni, atıfı, yeniden dağıtım kapsamı, SHA-256, süre, gloss hizası ve non-manual zamanlaması denetlenir.
-- [ ] Türkçe→TİD held-out 300 cümle değerlendirmesinde uzlaştırma sonrası anlam kabulü en az %90 olmadan yayın yapılmaz. Alt küme, ret ve yanlış kabul sonuçlarını da kaydedin.
-- [ ] `rain.glb` yeniden dağıtım hakkı doğrulanmadığı için kamuya açık pakete dahil edilmez. Kaynak kodun veya poz dosyalarının MIT olması karakter izni kanıtı değildir.
-- [ ] Katılımcı kimliği, rıza formu, ham/özel video, landmark ve kimlik eşleme tablosu Git'e veya web önbelleğine konmaz.
+- [ ] Temiz açılışta sayfa kamera veya mikrofon izni istemez.
+- [ ] **Dinlemeyi başlat** düğmesi mikrofon iznini ister; ara metin görünür; durdurduktan sonra metin elle düzeltilebilir.
+- [ ] `Sen iyisin` yazılıp onaylanınca kişi bilgisi korunur; bulunan sözlük pozları oynar, bulunmayan bölüm varsa harf kartı görünür ve çıktı doğal TİD diye etiketlenmez.
+- [ ] Bilinmeyen bir sözcük boş sonuç vermek yerine görünür harf kartları oluşturur.
+- [ ] Oynatma hızı, **Tekrarla**, **Adım adım** ve **Durdur** kontrolleri çalışır.
+- [ ] **Kamerayı aç** düğmesine basınca kamera izni istenir ve önizleme başlar.
+- [ ] **Durdur** kamera akışındaki bütün izleri kapatır; sayfadan ayrılınca kamera açık kalmaz.
+- [ ] Kişisel işaret en az üç örnek kaydedilmeden hazır sayılmaz.
+- [ ] En az üç örnekten sonra kişisel işaret adayı üretilebilir; düşük güvenli hareket “anlaşılamadı” sonucunda kalır.
+- [ ] Kişisel örnekler sayfa yeniden açılınca kalıcı olarak bulunur; ham görüntü saklanmaz.
+- [ ] **Bu işareti sil** seçili etiketi, **Tüm kişisel veriyi sil** bütün kişisel örnekleri kaldırır; yeniden açılışta silinen veri geri gelmez.
+- [ ] Kamera adayı düzenlenebilir ve **Yanıt alanına aktar** tıklanmadan cevap alanını değiştirmez.
+- [ ] Cevap metni **Seslendir** ile okunur ve **Durdur** ile kesilir.
 
-## PWA kabuğu, çevrimdışı kullanım ve gizlilik
+## Gizlilik ve ağ
 
-- [ ] Service worker `./service-worker.js` adresinden klasik worker olarak kurulur ve manifestteki `./` kapsamıyla tutarlıdır.
-- [ ] Uygulama kabuğu HTML, CSS, gereken modülleri, manifesti, simgeleri, küçük TİD içerik/biçimbilim JSON dosyalarını ve vendored Three.js dosyalarını içerir. Cümle modeli/ONNX runtime açık kullanıcı indirmesi ve hash doğrulaması olmadan kabuk önbelleğine alınmaz.
-- [ ] Yalnızca hash doğrulanmış kamera model/runtime dosyaları ayrı `tid-camera-model-<sürüm>` önbelleğine yazılır; eski sürüm ancak yeni sürüm kurulunca silinir. Kare, landmark ve araştırma kaydı önbelleğe alınmaz.
-- [ ] Yeniden dağıtım izni doğrulanmamış avatar modeli paketlenmez; poz verileri avatar oynatma açılana kadar yüklenmez. TİD video medyası yalnızca içerik manifesti listelemiş, hak beyanı geçerli ve dosya karması doğruysa sürümlü önbelleğe girer.
-- [ ] Manifestte listelenmeyen TİD varlığı ve ham katılımcı/kamera yolu önbelleğe girmez. İndirme, karma veya kota hatası kullanıcıya hata olarak bildirilir ve tekrar deneme yolu vardır.
-- [ ] Eski uygulama kabuğu sürüm önbelleği silinir; başka site önbelleklerine dokunulmaz.
-- [ ] Elle yazılan metin ve yerel çeviri akışının cihaz dışına gönderilmediği; mikrofon konuşma tanımanın tarayıcı sağlayıcısına göre ağ kullanabileceği açıklanır.
-- [ ] Paketli `sentence-model-manifest.json` `available: false` ise model indirme ve kamera düğmeleri kapalıdır; sayfa yükleme yolu `getUserMedia` çağırmaz.
-- [ ] Model ileride eklense bile kullanıcı önce görünür MediaPipe telemetri açıklamasını görür; ancak açık kamera eylemi izin ister. Kamera sonucu yalnızca Türkçe aday gösterir, `Yanıt alanına aktar` onayı olmadan yanıt metni ve ses değişmez.
-- [ ] Araştırma/kamera toplama araçları ürünün ters yönlü çeviri özelliği değildir. Gerçek kamera uçtan uca denemesi model, veri ve uzman kapıları kapanana kadar yapılamaz.
+- [ ] **Yalnızca cihazda** modunda kamera ve metin isteklerinde bulut servisine ağ çağrısı yoktur.
+- [ ] **Akıllı hibrit** modunda kişisel eşleştirme ve varsa yerel ONNX modeli kullanılır; mevcut paket cümle modeli içermediğini açıkça söyler.
+- [ ] **Bulut destekli** modda ayrı onay kutusu seçilmeden kısa klip gönderilmez.
+- [ ] NVIDIA ayarında boş veya geçersiz anahtar anlaşılır hata verir; genel amaçlı model sonucu “düzenlenebilir aday” olarak görünür.
+- [ ] Oturum anahtarı sayfa kapatılınca/gizlenince temizlenir; IndexedDB, localStorage, servis çalışanı önbelleği ve kaynak dosyalarda bulunmaz.
+- [ ] Mikrofon konuşma tanımanın tarayıcıya göre internet/uzak hizmet kullanabileceği görünürdür.
 
-## Android Chrome'da elle doğrulama
+## Kurulum, çevrimdışı ve erişilebilirlik
 
-Cihaz modeli, Android/Chrome sürümü, tarih ve sonucu kaydedin. Bu liste şu an fiziksel cihazda çalıştırılmış değildir.
+- [ ] HTTPS adresinden manifest ve servis çalışanı kurulur; ana ekrana eklenen simge doğru kırpılır.
+- [ ] İlk çevrimiçi açılış yerel kamera çalışma zamanını indirir, SHA-256 doğrular ve hazır durumuna geçer.
+- [ ] Daha sonra uçak modunda uygulama kabuğu, 123 poz, metin çözümleme, avatar ve kişisel işaret verisi açılır.
+- [ ] Çevrimdışı durumda konuşma tanıma veya NVIDIA beklenmez; elle yazma ve yerel özellikler çalışır.
+- [ ] Kamera/mikrofon izni reddedilince elle kullanım devam eder ve yeniden deneme yolu görünür.
+- [ ] TalkBack; başlıkları, alan etiketlerini, durum mesajlarını ve düğmeleri anlaşılır sırada okur.
+- [ ] Klavye odağı görünürdür; büyük yazı, dar ekran, yatay/dikey yön ve azaltılmış hareket tercihi kullanılabilir.
+- [ ] Android Chrome sekmesi arka plana alınınca kamera, kısa klip ve oturum anahtarı bırakılır.
 
-- [ ] Temiz HTTPS kurulumu: uygulama simgesi, manifest, ana ekrandan açılış ve servis çalışanı kontrolü.
-- [ ] Türkçe metin: `Sen iyisin` yazıp onaylayın. Mevcut boş içerik sürümünde sonuç **desteklenmiyor** olmalı; oynatma düğmesi görünmemeli. Bu örnek şu an TİD'e çevrilmiyor.
-- [ ] Kamera kartında model indirme/kamera düğmeleri devre dışı olmalı; sayfa açılışında kamera izni penceresi görünmemeli. Bu sürümde gerçek kamera denemesi yapılamaz.
-- [ ] Gerçek `ready` sonucu yalnızca sonradan uzmanlarca incelenmiş bir örnek ve lisanslı varlık eklenirse denenebilir; gerçek örnek eklenmeden bu madde tamamlandı sayılmaz.
-- [ ] Ara metin, son transkript, mikrofonu durdurma ve son metni ayrıca onaylama sırasını deneyin. Tanıma sürerken onay/oynatma başlamamalı.
-- [ ] Mikrofon iznini reddedin ve tarayıcı ağı kullanılamazken elle metin girişi, onay, hata açıklaması ve metni düzenleme çalışıyor.
-- [ ] Onaylı medya eklendiğinde indirme, karma/erişim hatası, yeniden deneme, durdurma, çevrimdışı tekrar oynatma ve başka içerik sürümüne geçişi sınayın.
-- [ ] Uçak modunda önbelleğe alınmış uygulama kabuğunu ve daha önce indirilmiş lisanslı medyayı açın. Konuşma tanımanın çevrimdışı çalıştığını varsaymayın.
-- [ ] TalkBack durum bildirimleri, klavye gezinmesi, görünür odak, büyük metin, dar ekran ve azaltılmış hareket tercihini sınayın.
-- [ ] Yazı/metin/TİD medyasının NVIDIA veya başka bir üretken AI hizmetine gönderilmediğini ağ incelemesiyle doğrulayın. Kamera özelliği açılacak sürümde MediaPipe ölçüm/ortam verisi için ayrıca ağ incelemesi yapın.
+## Yayın dosyası ve lisans envanteri
 
-## Önceki masaüstü kontrolünün kapsamı
+- [ ] `public/index.html`, `public/styles.css`, `public/app.mjs`, `public/app-state.mjs`
+- [ ] `public/avatar.mjs`, `public/procedural-rig.mjs`, `public/letter-cards.mjs`, `public/tid-display-plan.mjs`
+- [ ] `public/tid-media-player.mjs`, `public/tid-output-ui.mjs`, `public/tid-transfer.mjs`, `public/turkish-morphology.mjs`
+- [ ] `public/assets/avatar/saved-poses.json`, `public/SIGNBRIDGE-LICENSE.txt`
+- [ ] `public/assets/tid/content-manifest.json`, `public/assets/tid/reviewed-content.json`, `public/assets/tid/morphology-rules.json`
+- [ ] `public/assets/tid/gloss-to-turkish.json`, `public/assets/tid/sentence-model-manifest.json`
+- [ ] `public/assets/runtime/runtime-manifest.json` ve üç MediaPipe `.task` modeli
+- [ ] `public/landmark-runtime.mjs`, `public/landmark-worker.js`, `public/landmark-normalization.mjs`, `public/mediapipe-fileset.mjs`
+- [ ] `public/personal-sign-store.mjs`, `public/personal-training.mjs`, `public/personal-sign-recognizer.mjs`
+- [ ] `public/sign-recognition.mjs`, `public/sign-recognition-worker.js`, `public/onnx-runtime-loader.mjs`, `public/tid-to-turkish.mjs`
+- [ ] `public/hybrid-recognition.mjs`, `public/privacy-mode.mjs`, `public/cloud-session.mjs`, `public/nvidia-candidate.mjs`
+- [ ] `public/service-worker.js`, `public/sw-policy.js`, `public/manifest.webmanifest`, `public/icons/icon.svg`, `public/icons/maskable.svg`
+- [ ] `public/vendor/mediapipe/LICENSE.txt`, `public/vendor/onnxruntime/LICENSE.txt`, `public/vendor/three/LICENSE.txt`
+- [ ] `public/vendor/three/three.module.js` ve gereken addon modülleri
+- [ ] `public/ASSET-NOTICE.txt`; `rain.glb` kamuya açık kaynak ve site paketinde yoktur.
 
-25 Eylül 2026, Windows'ta localhost: önceki kullanıcı arayüzünde uygulama kabuğu ve avatar dosyalarının çevrimdışı açıldığı kaydedilmiştir. Bu sonuç Android kurulumu veya güncel onaylı Türkçe→TİD akışının doğrulaması değildir; yeni arayüz ve medya önbelleği için ayrı deneme gerekir.
+## Doğal TİD kanıt kapısı
 
-## Yayın kararı
+- [ ] En az 300 izinli, zaman kodlu ve geliştirmede kullanılmamış cümle/klip.
+- [ ] En az 20 kişi ayrık işaretleyici.
+- [ ] Her sonuç için iki bağımsız akıcı TİD değerlendiricisi ve anlaşmazlık hakemi.
+- [ ] Uzlaştırma sonrası en az %90 anlam kabulü.
+- [ ] Destek dışı girdilerde en fazla %5 yanlış kabul.
+- [ ] Hedef Android cihazda doğruluk, gecikme, pil ve ısınma ölçümü.
+- [ ] En az 30 yüz yüze TİD kullanıcı oturumu.
 
-- [ ] İki bağımsız TİD incelemesi ve gerektiğinde hakem sonucu kayda geçirildi.
-- [ ] 300 held-out cümlede en az %90 anlam kabulü sağlandı; kişi, olumsuzluk, soru, zaman, iyelik ve çekim alt sonuçları raporlandı.
-- [ ] Desteklenen tüm cümlelerin varlık hakları, içerik karmaları ve non-manual gösterimleri doğrulandı.
-- [ ] `rain.glb` model hakkı çözüldü veya izinli modelle değiştirildi.
-- [ ] Android Chrome, çevrimdışı ve erişilebilirlik denemeleri fiziksel cihazda geçti.
-- [ ] Yayın sahibi yalnızca yukarıdaki kanıtlardan sonra HTTPS statik dağıtımı onayladı.
+Bu kapılar tamamlanmadan 123 sözlük pozu veya kişisel eşleştirme “bütün konuşmaları doğal TİD'e çevirir” diye tanıtılamaz.

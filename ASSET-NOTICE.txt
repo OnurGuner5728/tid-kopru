@@ -2,8 +2,12 @@ TİD Köprü avatar varlık bildirimi
 
 saved-poses.json, SignBridge ana deposundaki web/avatar/saved_poses.json dosyasından alınmıştır.
 Kaynak: esmasila/SignBridge
-Lisans: MIT; tam metin SIGNBRIDGE-LICENSE.txt dosyasındadır.
+Lisans: MIT; tam metin SIGNBRIDGE-LICENSE.txt ve public/SIGNBRIDGE-LICENSE.txt dosyalarındadır.
 
 rain.glb ve yerel Three.js dosyaları, esmasila/SignBridge-Mobile deposundaki assets/avatar dizininden alınmıştır. SignBridge ana projesi MIT olarak yayımlansa da karakter modelinin ayrı kullanım ve yeniden dağıtım hakları açıkça belgelenmemiştir. rain.glb kamuya açık kaynak ve site paketinden çıkarılmıştır; yazılı izin doğrulanmadan yeniden eklenmemelidir.
 
-Three.js, MIT lisansı altında yayımlanır. Site kopyası lisans metnini public/vendor/three/LICENSE.txt altında içerir.
+Three.js, MIT lisansı altında yayımlanır. Site kopyası lisans metnini public/vendor/three/LICENSE.txt altında içerir. TİD Köprü, rain.glb yerine projeye ait prosedürel iskelet çizimini kullanır.
+
+MediaPipe Tasks Vision 1.0.1 ve paketli el, yüz ve gövde modelleri Apache-2.0 lisanslıdır. Bildirim public/vendor/mediapipe/LICENSE.txt dosyasındadır.
+
+ONNX Runtime Web 1.30.0 MIT lisanslıdır. Bildirim public/vendor/onnxruntime/LICENSE.txt dosyasındadır. Paket çalışma zamanını içerir; genel TİD cümle modeli içermez.

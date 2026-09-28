@@ -1,52 +1,83 @@
 # TİD Köprü
 
-Türkçe konuşan ve Türk İşaret Dili (TİD) kullanan kişilerin yüz yüze iletişimini desteklemek için geliştirilen teknik prototip. Metni yazabilir veya tarayıcı konuşma tanımasını kullanabilir, görünen son metni onaylayabilir ve cihazın Türkçe ses sentezinden yararlanabilirsiniz.
+TİD Köprü, Türkçe konuşan ve Türk İşaret Dili (TİD) kullanan kişilerin yüz yüze iletişimine yardımcı olan, kurulabilir bir web uygulamasıdır. Türkçe metni konuşarak veya yazarak alır; cümleyi kişi, olumsuzluk, soru, gelecek zaman ve iyelik bilgilerini koruyarak işler; bildiği işaretleri basit bir iskelet üzerinde sırayla gösterir. Kamera tarafında kullanıcının kendi öğrettiği işaretleri cihazda tanıyıp düzenlenebilir Türkçe aday üretir.
 
-> **Yayın durumu: Engelli.** Uygulamanın Türkçe→TİD aktarım ve oynatıcı altyapısı vardır; fakat dağıtım paketinde TİD uzmanlarınca onaylanmış cümle veya lisansı doğrulanmış gösterim medyası yoktur. Şu anda desteklenen TİD cümle alanı **0 cümledir**. Desteklenmeyen her ifadede TİD işareti oynatılmaz. Android Chrome ve erişilebilirlik cihaz kontrolleri de henüz yapılmamıştır.
+> **Mevcut kapsam:** 123 sözlük poz, 0 uzman onaylı doğal TİD cümle, 0 lisanslı cümle videosu. Sözlük pozlarının art arda gösterilmesi ve bilinmeyen sözcüklerin harf kartlarıyla görünür kılınması iletişime yardımcı olur; doğal TİD cümlesi değildir. Uygulama her konuşmayı doğal TİD'e çevirmez.
 
-Yazılım **acil durum aracı değildir**; tıbbi veya hayati iletişimde tek kanal olarak kullanmayın.
+Uygulama acil, tıbbi veya hayati iletişimde tek kanal olarak kullanılmamalıdır.
 
-## Bu prototip şu an ne yapıyor?
+## Hemen kullanma
 
-- Türkçe metni düzenlenebilir bir alana alır. İsteğe bağlı mikrofon tanımasında ara ve son metin görünür; dinleme durduktan sonra kullanıcı son metni ayrıca onaylar.
-- Metni cihazda çalışan sınırlı Türkçe biçimbilim ve onaylı içerik denetiminden geçirir. Bilinmeyen veya belirsiz ifadeyi tahminle tamamlamaz.
-- Mevcut `pilot-content-0` içeriğinde **0 onaylı cümle, 0 üretken aktarım kalıbı ve 0 medya varlığı** vardır. Bu nedenle `Sen iyisin` dahil hiçbir cümle şu an TİD hareketine çevrilemez. `iyisin` çözümlemesinin testlerde ikinci tekil kişi bilgisini koruması, bu cümle için TİD karşılığının onaylandığı anlamına gelmez.
-- Yanıt metnini cihazın ses senteziyle seslendirebilir.
-- TİD→Türkçe için aday/inceleme arayüzü vardır, ancak kamera ve model indirme düğmeleri kapalıdır. Dağıtımda lisanslı MediaPipe/ONNX çalışma zamanı, eğitilmiş cümle modeli ve onaylı gloss→Türkçe cümleleri bulunmadığından kamera izni istenmez ve çeviri başlatılamaz.
+Yayınlanan sürüm: [https://onurguner5728.github.io/tid-kopru/](https://onurguner5728.github.io/tid-kopru/)
 
-Hedeflenen olası ilk içerik alanı selamlaşma, kişiler/aile, temel ihtiyaçlar, gündelik etkinlikler, zaman/yer, tercih, basit rica ve tekrar isteme cümleleridir. Bunların hiçbiri iki bağımsız akıcı TİD değerlendiricisinin incelemesi ve uygun gösterim medyası olmadan desteklenmiş sayılmaz. Güncel sayımlar ve yayın kapısı [değerlendirme raporunda](docs/tid-text-to-sign-evaluation.md) tutulur.
-
-## Bilgisayarda açma
-
-Ek paket kurmadan projeyle gelen yerel sunucuyu kullanın. Sunucu JavaScript modüllerine doğru MIME türünü verir ve yalnızca bu bilgisayarda dinler. Proje klasöründe:
+Bilgisayarda yerel olarak açmak için proje klasöründe:
 
 ```powershell
 python tools/serve.py
 ```
 
-Sonra aynı bilgisayarda [http://localhost:8000](http://localhost:8000) adresini açın. Başka bir port için `python tools/serve.py --port 8111` kullanın; durdurmak için `Ctrl+C` basın.
+Ardından [http://localhost:8000](http://localhost:8000) adresini açın. Telefon kurulumu, kamera, mikrofon ve çevrimdışı çalışma için yayınlanan HTTPS adresini kullanın. İlk açılışta yaklaşık 50 MB yerel kamera çalışma zamanı indirilip SHA-256 ile doğrulanır; sonraki açılışlarda önbellekten kullanılabilir.
 
-Uzak Android telefonda kurulum, servis çalışanı ve mikrofon izni için HTTPS gerekir. `localhost` yalnızca aynı cihazdaki yerel deneme adresidir. Depo belirli bir barındırma sağlayıcısına yayımlanmış değildir.
+## Türkçe → TİD gösterimi
 
-## Konuşma tanıma ve gizlilik
+1. Türkçe cümleyi yazın veya **Dinlemeyi başlat** ile konuşun.
+2. Tarayıcının çıkardığı metni düzeltin ve **Metni onayla ve TİD'e çevir** düğmesine basın.
+3. Uygulama önce uzman onaylı cümle içeriği arar. Mevcut pakette bu sayı 0'dır.
+4. Ardından kişi, iyelik, olumsuzluk, soru ve gelecek zaman gibi bilgileri koruyan aktarım planını kurar. 123 sözlük poz içinden bulunanları basit iskeletle, bulunmayan görünür sözcükleri harf kartlarıyla gösterir.
+5. Hızı değiştirebilir, tekrar oynatabilir veya adım adım ilerleyebilirsiniz.
 
-Elle yazılan metin, biçimbilim çözümlemesi ve onaylı içerik araması tarayıcıda, cihazda çalışır. Uygulama metin, video, landmark veya kamera görüntüsünü bulut yapay zekâsına göndermez ve NVIDIA API anahtarı içermez.
+`Sen iyisin`, `Ben iyi değilim`, `Annemin telefonu`, `Yarın okula gidecek misin?` ve `Onur'un kahvesi` gibi biçimler artık ek bilgileri kaybolmadan işlenir. Çıktı ekranda kaynağıyla birlikte “sözlük dizimi”, “harf kartı” veya “uzman onaylı içerik” olarak etiketlenir.
 
-Mikrofon yalnızca **Dinlemeyi başlat** düğmesine basılınca istenir. Konuşmayı yazıya çevirme tarayıcının konuşma tanıma sağlayıcısını kullanabilir; bu sağlayıcı internet bağlantısı ve sesin cihaz dışına gönderilmesini gerektirebilir. Sağlayıcının ağ ve saklama davranışı tarayıcıya/cihaza bağlıdır. Mikrofon izni reddedilse de elle yazma çalışır.
+## Kamera → Türkçe adayı
 
-Kamera akışı şu an kapalıdır; kullanıcı izni istemez. Arayüzdeki açıklama, MediaPipe görüntüyü cihazda işlese de kullanım/performance ölçümü ve sistem ortamı verilerinin Google'a gönderilebileceğini bildirir. Bu nedenle uygulama kamera hattının hiçbir ağ bağlantısı kurmadığını iddia etmez.
+Kamera kendiliğinden açılmaz. **Kamerayı aç** düğmesiyle izin verildikten sonra MediaPipe el, yüz ve gövde noktalarını cihazda çıkarır. Ham kamera görüntüsü kişisel öğretme sırasında kaydedilmez veya saklanmaz.
 
-## Çevrimdışı kullanım ve varlıklar
+Kişisel tanıma için:
 
-Uygulama kabuğu, küçük içerik dosyaları ve biçimbilim kuralları servis çalışanıyla önbelleğe alınır. Lisansı ve SHA-256 özeti manifestte kayıtlı TİD medyası yalnızca onaylı içerik listesinde bulunursa, dosya özeti doğrulandıktan sonra sürümlü önbelleğe alınır. Ham kamera veya katılımcı kayıtları bu akışa dahil edilmez. İlk çevrimdışı kullanım için gerekiyorsa uygulamayı çevrimiçiyken bir kez açın; mikrofon tanımasının çevrimdışı çalışacağını varsaymayın.
+1. **Kişisel işaret öğret** bölümünü açın ve sözlükten bir işaret seçin.
+2. Aynı işareti en az üç kez örnek olarak kaydedin.
+3. Kamerada işareti yapıp **İşareti bitir** düğmesine basın.
+4. Bulunan Türkçe adayı gerekirse düzeltin; yalnızca **Yanıt alanına aktar** onayından sonra cevap alanına geçer.
 
-`rain.glb` karakter modelinin yeniden dağıtım hakkı doğrulanmadı; dosya kamuya açık kaynak ve site paketinden çıkarılmış, avatar arayüzü kapalı tutulmuştur. `saved-poses.json` SignBridge MIT lisansıyla gelen kaynak poz verisidir; ancak pozlar tek başına cümle çevirisi veya oynatılabilir TİD ifadesi değildir. Lisans metni site dağıtımında da [`public/SIGNBRIDGE-LICENSE.txt`](public/SIGNBRIDGE-LICENSE.txt) olarak sunulur.
+Örnekler tarayıcının cihaz içi veritabanında sayısal hareket noktaları olarak kalır. Tek bir işareti **Bu işareti sil** ile, bütün örnekleri **Tüm kişisel veriyi sil** ile kaldırabilirsiniz. Tarayıcı verileri temizlenmedikçe kişisel örnekler yeniden açılışta kullanılabilir.
 
-Uygulamanın TİD çeviri yayını uzman onayı, lisanslı cümle medyası, gerçek kamera modeli ve Android cihaz değerlendirmesi tamamlanana kadar engellidir. `rain.glb` yeniden dağıtım izni doğrulanmadığı için kamu paketine alınmamıştır. Hak durumu [`ASSET-NOTICE.txt`](ASSET-NOTICE.txt) ve [Android/yayın kontrol listesinde](docs/manual-android-checklist.md) izlenir.
+Paketlenmiş, genel amaçlı bir TİD cümle tanıma modeli bulunmadığından kamera yalnızca kişisel olarak öğretilen işaretleri güvenli eşiğin üstünde eşleştirir. Eşleşme zayıfsa tahmin yerine “anlaşılamadı” sonucu verir.
 
-Cümle modeli listesi [`sentence-model-manifest.json`](public/assets/tid/sentence-model-manifest.json) şu anda `available: false` gösterir. Model dosyası, lisansı doğrulanmış yerel görüntü/ONNX çalışma zamanı, gerçek TİD cümle verisi, model ölçümleri ve onaylı ters yön cümleleri olmadan kamera özelliği kullanıma açılamaz. Ayrıntılı durum [kamera değerlendirme raporunda](docs/tid-camera-to-text-evaluation.md) ve [iki yönlü saha sonuçlarında](docs/tid-two-way-field-results.md) tutulur.
+## Gizlilik modları
 
-## Geliştirme kontrolleri
+- **Yalnızca cihazda:** Varsayılan moddur. Kamera karesi, hareket noktaları ve metin buluta gönderilmez.
+- **Akıllı hibrit:** Önce kişisel yerel eşleştirme, ardından varsa hash doğrulanmış yerel ONNX modeli kullanılır. Mevcut pakette ONNX cümle modeli yoktur.
+- **Bulut destekli:** Yalnızca ayrı kutuyu işaretleyerek açık izin verdiğinizde kısa klip NVIDIA hizmetine gönderilebilir. Bu seçim her oturumda yeniden yapılır.
+
+NVIDIA modeli genel amaçlı ve TİD için doğrulanmamış bir video modelidir. Sonucu en fazla düşük güvenli, düzenlenebilir bir adaydır; kullanıcı onayı olmadan cevap alanına aktarılmaz. API anahtarı yalnızca sayfanın o oturumundaki bellekte tutulur, kalıcı depoya yazılmaz ve sayfa gizlenince veya kapanınca temizlenir. Depoda API anahtarı bulunmaz.
+
+Mikrofon yalnızca **Dinlemeyi başlat** düğmesine basılınca açılır. Tarayıcı konuşma tanıma hizmeti internet kullanabilir ve sesi tarayıcı sağlayıcısına gönderebilir. Elle yazma, cümle çözümleme, avatar ve kişisel kamera tanıma cihazda çalışır.
+
+## Çevrimdışı çalışma
+
+Uygulama kabuğu, 123 poz, dil kuralları ve yerel MediaPipe/ONNX Runtime Web dosyaları ilk başarılı çevrimiçi açılıştan sonra servis çalışanıyla önbelleğe alınır. Mikrofon konuşma tanımasının çevrimdışı çalışması tarayıcıya bağlıdır. Bulut destekli aday için internet gerekir.
+
+Kullanılan çalışma zamanları:
+
+- MediaPipe Tasks Vision 1.0.1 — Apache-2.0
+- ONNX Runtime Web 1.30.0 — MIT
+- Three.js — MIT
+- SignBridge `saved-poses.json` — MIT
+
+`rain.glb` karakter modelinin yeniden dağıtım hakkı doğrulanmadığı için kamuya açık kaynak ve site paketinden çıkarılmıştır. Uygulama bunun yerine projeye ait basit iskelet çizimini kullanır. Ayrıntılar [varlık bildiriminde](ASSET-NOTICE.txt) yer alır.
+
+## Doğal TİD için yayın kapısı
+
+Çalışan yazılım ile dil doğruluğu ayrı ölçülür. “Doğal TİD çevirisi” iddiası için en az 300 izinli ve geliştirmede kullanılmamış cümle/klip, en az 20 kişi ayrık işaretleyici, iki bağımsız akıcı TİD değerlendiricisi, en az %90 anlam kabulü, en fazla %5 destek dışı yanlış kabul, hedef Android ölçümü ve 30 yüz yüze kullanıcı oturumu gerekir. Bu insan ve saha çalışmaları henüz yapılmadı.
+
+Güncel kanıt durumu:
+
+- [Türkçe → TİD değerlendirmesi](docs/tid-text-to-sign-evaluation.md)
+- [Kamera → Türkçe değerlendirmesi](docs/tid-camera-to-text-evaluation.md)
+- [İki yönlü saha sonuçları](docs/tid-two-way-field-results.md)
+- [Android ve yayın kontrol listesi](docs/manual-android-checklist.md)
+
+## Geliştirme doğrulaması
 
 ```powershell
 npm test
@@ -54,4 +85,4 @@ npm run check
 python -m unittest discover -s tests -v
 ```
 
-Otomatik testlerdeki sentetik onaylar yalnızca yazılım davranışını sınar; TİD uzman incelemesi, insan değerlendirmesi veya gerçek cihaz denemesi yerine geçmez. Ürünü acil, tıbbi veya hayati iletişimde tek kanal olarak kullanmayın.
+Otomatik kontroller yazılım davranışını ve gizlilik sınırlarını doğrular; akıcı TİD kullanıcısı değerlendirmesi yerine geçmez.

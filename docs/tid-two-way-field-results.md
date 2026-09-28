@@ -1,35 +1,44 @@
-# TİD Köprü — iki yönlü saha ve entegrasyon sonucu
+# TİD Köprü iki yönlü entegrasyon sonucu
 
 **Tarih:** 25 Eylül 2026
-**Durum:** TAM ENTEGRASYON DOĞRULANMADI · YAYIN ENGELLİ
 
-## Yazılım kapsamı
+**Yazılım entegrasyonu:** Tamamlandı; yayın öncesi tarayıcı doğrulamasında
 
-- Türkçe→TİD tarafında yazı/mikrofon metni, elle son düzeltme/onay, morfolojik çözümleme ve yalnızca onaylı içerik/medya oynatma yolu vardır. Paketli içerikte desteklenen cümle sayısı 0 olduğundan şu anda hiçbir Türkçe cümle TİD gösterimi üretmez.
-- TİD→Türkçe tarafında onaylı gloss dizisini Türkçe adaya bağlayan, kullanıcı düzeltmesini ve ayrı onayı destekleyen kod vardır. Paketli ters yön sözlüğü boş olduğu için şu an Türkçe aday üretilemez.
-- Kamera istemcisi, Web Worker, hash doğrulaması ve ayrı sürümlü indirme önbelleği yazılım olarak uygulanmıştır. Dağıtım manifestinde gerçek kamera modeli ve lisanslı çalışma zamanı bulunmadığından ürün düğmeleri kapalıdır; sayfa açılışında kamera başlamaz.
-- Aday metin, `Yanıt alanına aktar` tıklamasına kadar mevcut yanıt alanını değiştirmez. Ses yalnızca ayrı Seslendir eylemiyle başlar.
-- Test fixture'ları ve sentetik gözlemler sadece protokol davranışını sınar; gerçek konuşmacı, işaretleyici veya TİD anlam başarımı kanıtlamaz.
+**İnsan ve saha doğrulaması:** Bekliyor
 
-## İnsan ve cihaz sonuçları
+## Entegre edilen kullanıcı akışları
+
+- Türkçe konuşma tanıma veya elle yazma, son metni düzeltme ve açık onay.
+- Kişi, iyelik, olumsuzluk, soru, gelecek zaman ve özel ad tamlamasını koruyan Türkçe çözümleme.
+- 123 sözlük pozla prosedürel iskelet gösterimi, bilinmeyen sözcükte harf kartı, hız/tekrar/adım kontrolleri.
+- Kamera izniyle cihazda MediaPipe landmark çıkarımı.
+- En az üç örnekle kişisel işaret öğretme, IndexedDB'de yalnızca normalize hareket noktalarını saklama, silme ve düşük güvenli sonucu reddetme.
+- Yerel kişisel eşleştirme, isteğe bağlı hash doğrulanmış ONNX ve açık izinli NVIDIA adayını sıralayan hibrit karar yolu.
+- Düzenlenebilir kamera adayı; cevap alanına ayrı kullanıcı onayı; cihazın Türkçe ses sentezi.
+- Kurulabilir PWA, ilk yüklemeden sonra çevrimdışı uygulama kabuğu ve yerel çalışma zamanı.
+
+## Dil doğrulamasının mevcut sayıları
 
 | Ölçüm | Gereken | Yapılan |
-|---|---:|---:|
-| İki yönü kullanan yüz yüze TİD kullanıcı oturumu | 30 | 0 |
-| Kamera cümle modeli held-out klibi | 300 | 0 |
-| Bağımsız akıcı TİD incelemesi | 2 | 0 |
-| Hedef Android cihaz değerlendirmesi | En az 1 | 0 |
-| Temiz Android/HTTPS ve çevrimdışı kabulü | Tüm kontrol listesi | Yapılmadı |
-| Aday düzeltme, anlaşılamadı ve durdurma kullanılabilirliği | Oturumlarda ölçüm | Ölçülmedi |
+| --- | ---: | ---: |
+| Uzman onaylı doğal TİD cümle | İçerik sürümüne göre | 0 |
+| Held-out izinli cümle/klip | 300 | 0 / 300 |
+| Kişi ayrık işaretleyici | 20 kişi | 0 |
+| Bağımsız akıcı TİD değerlendiricisi | 2 | 0 |
+| Uzlaştırılmış anlam kabulü | En az %90 | Ölçülmedi |
+| Destek dışı yanlış kabul | En fazla %5 | Ölçülmedi |
+| Yüz yüze TİD kullanıcı oturumu | 30 yüz yüze oturum | 0 |
+| Hedef Android cihazı | En az 1 | Yapılmadı |
 
-Bu nedenle anlam kabulü, yanlış kabul, gecikme, erişilebilirlik veya kullanıcı memnuniyeti için bir oran raporlanmamıştır. `docs/manual-android-checklist.md` tamamlanmamış fiziksel kontrolleri listeler.
+Bu sayılar otomatik yazılım doğrulamasından ayrı tutulur. 123 sözlük pozunun bulunması, doğal cümle hareketi veya bütün konuşmaların çevrildiği anlamına gelmez.
 
-## Sonraki dış bağımlılıklar
+## Bekleyen saha çalışması
 
-1. TİD danışmanı ve katılımcı rızasıyla zaman kodlu, kişi ayrık cümle verisi toplamak ve bağımsız uzmanlara etiketletmek.
-2. MediaPipe ve ONNX çalışma zamanı/model dosyaları için yeniden dağıtım izinlerini ve MediaPipe telemetri açıklamasını doğrulamak.
-3. Önceden tanımlanmış held-out ve ret kapılarını gerçek veride çalıştırmak; kalibrasyonu hedef Android telefonda ölçmek.
-4. Boş olmayan ters yön gloss→Türkçe eşleşmelerini iki bağımsız akıcı TİD değerlendiricisiyle gözden geçirmek.
-5. 30 ayrı yüz yüze kullanıcı oturumu ve Android erişilebilirlik/çevrimdışı kabulünü tamamlayıp sonuçları yeniden raporlamak.
+1. Açık rıza ve TİD danışmanı eşliğinde en az 300 held-out cümle/klip toplamak.
+2. En az 20 kişi ayrık işaretleyiciyle yanlış kabul ve anlam kabulünü ölçmek.
+3. Sonuçları iki bağımsız akıcı TİD değerlendiricisine inceletmek; anlaşmazlığı hakemle çözmek.
+4. En az %90 anlam kabulü ve en fazla %5 destek dışı yanlış kabul kapısını uygulamak.
+5. Android Chrome'da gecikme, pil, ısınma, çevrimdışı kullanım ve TalkBack ölçümü yapmak.
+6. En az 30 yüz yüze kullanım oturumu tamamlamak.
 
-Bu kanıtlar olmadan proje doğrudan kullanılabilir iki yönlü TİD çevirisi olarak tanıtılmamalıdır.
+Saha kapıları tamamlanana kadar ürün, çalışan bir iletişim yardımcısı ve kişisel işaret prototipi olarak sunulur; evrensel veya doğal TİD çevirmeni iddiası taşımaz.

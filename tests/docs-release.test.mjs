@@ -2,100 +2,100 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
-const readme = await readFile(new URL('../README.md', import.meta.url), 'utf8');
-const checklist = await readFile(new URL('../docs/manual-android-checklist.md', import.meta.url), 'utf8');
-const authoringGuide = await readFile(new URL('../tools/tid_translation/README.md', import.meta.url), 'utf8');
-const tidEvaluation = await readFile(new URL('../docs/tid-text-to-sign-evaluation.md', import.meta.url), 'utf8').catch(() => '');
-const cameraEvaluation = await readFile(new URL('../docs/tid-camera-to-text-evaluation.md', import.meta.url), 'utf8').catch(() => '');
-const fieldResults = await readFile(new URL('../docs/tid-two-way-field-results.md', import.meta.url), 'utf8').catch(() => '');
-const publicAssetNotice = await readFile(new URL('../public/ASSET-NOTICE.txt', import.meta.url), 'utf8');
-const publicSignbridgeLicense = await readFile(new URL('../public/SIGNBRIDGE-LICENSE.txt', import.meta.url), 'utf8');
-const publicThreeLicense = await readFile(new URL('../public/vendor/three/LICENSE.txt', import.meta.url), 'utf8');
+const read = (path) => readFile(new URL(path, import.meta.url), 'utf8');
+const readme = await read('../README.md');
+const checklist = await read('../docs/manual-android-checklist.md');
+const authoringGuide = await read('../tools/tid_translation/README.md');
+const tidEvaluation = await read('../docs/tid-text-to-sign-evaluation.md');
+const cameraEvaluation = await read('../docs/tid-camera-to-text-evaluation.md');
+const fieldResults = await read('../docs/tid-two-way-field-results.md');
+const assetNotices = `${await read('../ASSET-NOTICE.txt')}\n${await read('../public/ASSET-NOTICE.txt')}`;
 
-test('setup guide states local command, remote HTTPS, unavailable avatar, and speech caveat', () => {
+test('readme describes the current usable hybrid release and its counts', () => {
+  assert.match(readme, /123\s+(sözlük )?poz/iu);
+  assert.match(readme, /0\s+(uzman onaylı )?(doğal )?TİD cümle/iu);
+  assert.match(readme, /MediaPipe[^\n]*1\.0\.1/iu);
+  assert.match(readme, /ONNX Runtime Web[^\n]*1\.30\.0/iu);
   assert.match(readme, /python tools\/serve\.py/u);
   assert.match(readme, /http:\/\/localhost:8000/u);
   assert.match(readme, /HTTPS/u);
-  assert.match(readme, /rain\.glb[\s\S]*?kamuya açık kaynak ve site paketinden çıkarılmış/u);
-  assert.match(readme, /tarayıcı.*konuşma tanıma.*internet|konuşma tanıma.*uzak.*hizmet/isu);
 });
 
-test('setup guide explains scope and product limits honestly', () => {
-  assert.match(readme, /desteklenen TİD cümle alanı[^\n]*0 cümle/iu);
-  assert.match(readme, /uzman onaylı içerik[^\n]*(bulunmuyor|yok)|TİD uzmanlarınca onaylanmış[^\n]*yok/iu);
-  assert.match(readme, /desteklenmeyen[^\n]*oynatılmaz/iu);
-  assert.match(readme, /son metni[^\n]*onayla/iu);
-  assert.match(readme, /elle yaz/u);
-  assert.match(readme, /konuşma tanıma[^\n]*(uzak|internet)|konuşma tanıma[\s\S]*uzak hizmet/iu);
-  assert.match(readme, /TİD→Türkçe[^\n]*(düğmeleri kapalı|kapalı)/iu);
-  assert.match(readme, /kamera izni istenmez/u);
-  assert.match(readme, /acil durum aracı değildir/u);
-  assert.match(readme, /Android Chrome.*henüz.*(doğrulanmadı|yapılmamıştır)/isu);
-  assert.doesNotMatch(readme, /genel.*TİD çevirisi sağlar|her cümleyi.*çevirir|çevrimdışı konuşma tanıma hazır/iu);
+test('readme explains all privacy modes and personal training lifecycle', () => {
+  assert.match(readme, /Yalnızca cihazda/iu);
+  assert.match(readme, /Akıllı hibrit/iu);
+  assert.match(readme, /Bulut destekli/iu);
+  assert.match(readme, /en az üç[^\n]*(örnek|kez)/iu);
+  assert.match(readme, /ham (kamera )?görüntüsü[^\n]*(saklanmaz|kaydedilmez)/iu);
+  assert.match(readme, /Tüm kişisel veriyi sil/iu);
+  assert.match(readme, /API anahtar[^\n]*oturum[^\n]*(yazılmaz|temizlenir|tutulur)|oturum[^\n]*(API )?anahtar[^\n]*(saklanmaz|temizlenir|tutulur)/iu);
 });
 
-test('public files include required MIT notices and omit the unverified character model', () => {
-  assert.match(publicAssetNotice, /rain\.glb[\s\S]*?kamuya açık kaynak ve site paketinden çıkarılmış/u);
-  assert.match(publicSignbridgeLicense, /MIT License/u);
-  assert.match(publicThreeLicense, /The MIT License/u);
-  assert.match(readme, /AVATAR_MODEL_REDISTRIBUTION_APPROVED = false|yeniden dağıtım hakkı doğrulanmadı/u);
+test('documentation distinguishes useful fallbacks from reviewed natural TID', () => {
+  assert.match(readme, /sözlük poz/iu);
+  assert.match(readme, /harf kart/iu);
+  assert.match(readme, /doğal TİD[^\n]*(değildir|sayılmaz)/iu);
+  assert.match(readme, /her (konuşmayı|cümleyi)[^\n]*(çevirmez|doğal TİD'e çeviremez)/iu);
+  assert.doesNotMatch(readme, /tüm konuşmaları doğal TİD'e çevirir|eksiksiz TİD çevirisi|her cümleyi doğal TİD'e çevirir/iu);
 });
 
-test('camera and two-way evaluation reports distinguish code tests from missing field evidence', () => {
-  assert.match(cameraEvaluation, /YAYIN ENGELLİ.*KAMERA KAPALI/isu);
-  assert.match(cameraEvaluation, /300[\s\S]*\| 0 \| Açık/u);
-  assert.match(cameraEvaluation, /ölçülmedi/iu);
-  assert.match(cameraEvaluation, /available: false/u);
-  assert.match(cameraEvaluation, /MediaPipe[\s\S]*Google/u);
-  assert.match(fieldResults, /yüz yüze TİD kullanıcı oturumu[\s\S]*0/u);
-  assert.match(fieldResults, /Türkçe aday üretilemez/u);
-  assert.match(fieldResults, /iki yönlü TİD çevirisi olarak tanıtılmamalıdır/u);
+test('NVIDIA candidate limits and browser speech caveat are explicit', () => {
+  assert.match(readme, /NVIDIA[^\n]*(genel amaçlı|doğrulanmamış)/iu);
+  assert.match(readme, /kısa klip[^\n]*(açık|ayrı)[^\n]*izin|(?:açık|ayrı)[^\n]*izin[^\n]*kısa klip/iu);
+  assert.match(readme, /düzenlenebilir[^\n]*aday/iu);
+  assert.match(readme, /kullanıcı[^\n]*onay/iu);
+  assert.match(readme, /konuşma tanıma[^\n]*(internet|uzak hizmet)|tarayıcı[^\n]*konuşma[^\n]*(internet|uzak hizmet)/iu);
 });
 
-test('evaluation report records the real release gate without inventing human results', () => {
-  assert.match(tidEvaluation, /YAYIN ENGELLİ|BLOCKED/iu);
-  assert.match(tidEvaluation, /0\s*\/\s*300|300[\s\S]*0 cümle/iu);
-  assert.match(tidEvaluation, /iki bağımsız.*TİD.*değerlendirici/isu);
-  assert.match(tidEvaluation, /henüz.*değerlendirme yapılmadı/isu);
-  assert.match(tidEvaluation, /%90/iu);
-  assert.match(tidEvaluation, /300.*cümle|cümle.*300/isu);
-  assert.match(tidEvaluation, /license|lisans/iu);
+test('runtime and source asset licenses are recorded without the character model', () => {
+  assert.match(assetNotices, /MediaPipe[^\n]*Apache-2\.0/iu);
+  assert.match(assetNotices, /ONNX Runtime Web[^\n]*MIT/iu);
+  assert.match(assetNotices, /Three\.js[^\n]*MIT/iu);
+  assert.match(assetNotices, /saved-poses\.json[^\n]*MIT/iu);
+  assert.match(assetNotices, /rain\.glb[\s\S]*?site paketinden çıkarılmış/iu);
 });
 
-test('authoring guide keeps production review and camera data outside the public bundle', () => {
+test('evaluation reports keep the exact natural TID evidence gates open', () => {
+  const reports = `${tidEvaluation}\n${cameraEvaluation}\n${fieldResults}`;
+  assert.match(reports, /300[^\n]*(cümle|klip)/iu);
+  assert.match(reports, /20[^\n]*(kişi|işaretleyici|imzalayan)/iu);
+  assert.match(reports, /iki bağımsız[^\n]*TİD/iu);
+  assert.match(reports, /%90/iu);
+  assert.match(reports, /%5/iu);
+  assert.match(reports, /30[^\n]*yüz yüze/iu);
+  assert.match(reports, /Android[^\n]*(ölçülmedi|yapılmadı|bekliyor)/iu);
+  assert.match(reports, /0\s*\/\s*300|300[^\n]*\|\s*0/iu);
+  assert.match(reports, /123\s+(sözlük )?poz/iu);
+  assert.match(reports, /0\s+(uzman onaylı )?(doğal )?TİD cümle|(uzman onaylı )?(doğal )?TİD cümle[^\n]*\|\s*0/iu);
+});
+
+test('Android checklist covers current camera, privacy, persistence, offline and deletion flows', () => {
+  for (const phrase of [
+    'Kamerayı aç', 'Durdur', 'Dinlemeyi başlat', 'Sen iyisin', 'harf kart',
+    'en az üç', 'Tüm kişisel veriyi sil', 'çevrimdışı', 'Bulut destekli',
+    'NVIDIA', 'TalkBack', 'Android Chrome',
+  ]) assert.ok(checklist.toLocaleLowerCase('tr-TR').includes(phrase.toLocaleLowerCase('tr-TR')), `missing Android check: ${phrase}`);
+  assert.match(checklist, /fiziksel Android[^\n]*(yapılmadı|bekliyor|doğrulanmadı)/iu);
+  assert.match(checklist, /kamera izni[^\n]*düğme|düğme[^\n]*kamera izni/iu);
+  assert.match(checklist, /kişisel[^\n]*(yeniden aç|kalıcı|saklan)/iu);
+});
+
+test('release inventory includes local runtime, personal recognition and cloud modules', () => {
+  for (const asset of [
+    'public/app.mjs', 'public/avatar.mjs', 'public/procedural-rig.mjs',
+    'public/letter-cards.mjs', 'public/tid-display-plan.mjs',
+    'public/assets/avatar/saved-poses.json', 'public/assets/runtime/runtime-manifest.json',
+    'public/landmark-runtime.mjs', 'public/landmark-worker.js', 'public/landmark-normalization.mjs', 'public/mediapipe-fileset.mjs',
+    'public/personal-sign-store.mjs', 'public/personal-training.mjs', 'public/personal-sign-recognizer.mjs',
+    'public/hybrid-recognition.mjs', 'public/privacy-mode.mjs', 'public/cloud-session.mjs',
+    'public/nvidia-candidate.mjs', 'public/service-worker.js', 'public/manifest.webmanifest',
+    'public/vendor/mediapipe/LICENSE.txt', 'public/vendor/onnxruntime/LICENSE.txt',
+    'public/vendor/three/LICENSE.txt',
+  ]) assert.ok(checklist.includes(asset), `missing release inventory entry: ${asset}`);
+});
+
+test('authoring guide still requires independent review and keeps raw data private', () => {
   assert.match(authoringGuide, /two TİD reviewers|two separate.*TİD review/isu);
   assert.match(authoringGuide, /never approves candidates or creates playable entries/iu);
   assert.match(authoringGuide, /ham kamera.*Git|Git.*raw camera|raw camera.*Git/isu);
-  assert.match(authoringGuide, /hosted AI|bulut.*AI|yapay zekâ/u);
-});
-
-test('release checklist inventories every public asset and blocks unresolved model rights', () => {
-  for (const asset of [
-    'public/app.mjs', 'public/avatar.mjs',
-    'public/assets/avatar/saved-poses.json', 'public/icons/icon.svg', 'public/icons/maskable.svg',
-    'public/index.html', 'public/manifest.webmanifest', 'public/matcher.mjs',
-    'public/service-worker.js', 'public/styles.css', 'public/sw-policy.js',
-    'public/tid-media-player.mjs', 'public/tid-output-ui.mjs', 'public/tid-transfer.mjs',
-    'public/turkish-morphology.mjs', 'public/assets/tid/content-manifest.json',
-    'public/assets/tid/reviewed-content.json', 'public/assets/tid/morphology-rules.json',
-    'public/assets/tid/gloss-to-turkish.json', 'public/assets/tid/sentence-model-manifest.json',
-    'public/sign-recognition.mjs', 'public/sign-recognition-worker.js', 'public/onnx-runtime-loader.mjs',
-    'public/tid-to-turkish.mjs',
-    'public/vendor/three/three.module.js', 'public/vendor/three/addons/loaders/GLTFLoader.js',
-    'public/vendor/three/addons/controls/OrbitControls.js',
-    'public/vendor/three/addons/utils/BufferGeometryUtils.js'
-  ]) assert.ok(checklist.includes(asset), `missing release inventory entry: ${asset}`);
-  assert.match(checklist, /rain\.glb[\s\S]*?kamuya açık kaynak ve site paketine dahil değildir/u);
-  assert.match(checklist, /yayın.*engellen|yayına.*çıkarılmamal/isu);
-  assert.match(checklist, /Three\.js.*MIT/isu);
-  assert.match(checklist, /manifest.*ikon/isu);
-  assert.match(checklist, /service worker|service-worker/isu);
-  assert.match(checklist, /gizlilik/u);
-  assert.match(checklist, /content-manifest\.json/u);
-  assert.match(checklist, /media.*SHA|SHA.*media/isu);
-  assert.match(checklist, /TİD.*300.*cümle|300.*cümle.*TİD/isu);
-  assert.match(checklist, /25 Eylül 2026, Windows'ta localhost/u);
-  assert.match(checklist, /Bu sonuç Android kurulumu.*doğrulaması değildir/u);
-  assert.match(checklist, /public\/SIGNBRIDGE-LICENSE\.txt/u);
-  assert.match(checklist, /public\/vendor\/three\/LICENSE\.txt/u);
 });

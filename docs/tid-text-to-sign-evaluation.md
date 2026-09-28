@@ -1,42 +1,51 @@
-# Türkçe→TİD değerlendirme ve yayın kapısı
+# Türkçe → TİD gösterimi değerlendirmesi
 
 **Rapor tarihi:** 25 Eylül 2026
-**Durum:** **YAYIN ENGELLİ — insan değerlendirmesi yapılmadı**
+
+**Yazılım durumu:** Kullanılabilir deneysel gösterim
+
+**Doğal TİD doğrulaması:** Bekliyor
+
 **İçerik sürümü:** `pilot-content-0`
 
-Bu rapor gerçek inceleme kanıtlarının özetidir. Eksik sonuçlar boş bırakılır; sentetik test girdileri, aday veri veya otomatik testler insan onayı yerine sayılmaz. Katılımcı kimliği, iletişim bilgisi, imza videosu ve özel inceleme formları depoya konmaz.
+## Mevcut ölçülebilir kapsam
 
-## Mevcut kanıt
+| Ölçüm | Mevcut sonuç | Açıklama |
+| --- | ---: | --- |
+| SignBridge kaynaklı sözlük pozu | 123 | Basit iskelette statik poz/geçiş olarak oynatılır |
+| Uzman onaylı doğal TİD cümle | 0 | Cümle düzeyinde akıcı TİD iddiası yoktur |
+| Lisanslı cümle videosu | 0 | Video yerine kaynak etiketi gösterilir |
+| Bilinmeyen görünür sözcük desteği | Var | Harf kartı; parmak alfabesi veya doğal TİD diye sunulmaz |
+| Biçimbilim kapsamı | Var | Kişi, iyelik, olumsuzluk, soru, gelecek zaman ve özel ad tamlaması |
+| Held-out insan değerlendirmesi | 0 / 300 cümle | Henüz yapılmadı |
+| Akıcı TİD değerlendiricisi | 0 / 2 | Henüz yapılmadı |
+| Fiziksel Android değerlendirmesi | Yapılmadı | Ayrı kontrol listesi bekliyor |
 
-| Ölçüm | Mevcut sonuç | Yayın koşulu |
+`Sen iyisin`, `Ben iyi değilim`, `Annemin telefonu`, `Yarın okula gidecek misin?` ve `Onur'un kahvesi` otomatik kontrollerde dilbilgisi bilgisini koruyan gösterim planları üretir. Bu, işaret sırasının veya hareketlerin akıcı TİD kullanıcılarınca onaylandığı anlamına gelmez.
+
+## Çıktı önceliği
+
+1. İki bağımsız akıcı TİD değerlendiricisi tarafından kabul edilmiş ve lisanslı medyası bulunan tam cümle.
+2. 123 pozdan kurulmuş, açıkça **sözlük dizimi** olarak etiketlenen gösterim.
+3. Bulunmayan görünür sözcükler için **harf kartı**.
+4. Gösterilemeyen simge için açık destek dışı bildirimi.
+
+Her çıktı kendi kaynağıyla etiketlenir. Sözlük dizimi ve harf kartları doğal TİD sayılmaz; uygulama her cümleyi doğal TİD'e çeviremez.
+
+## Doğal TİD yayın kapısı
+
+| Kapı | Gereken | Mevcut |
 | --- | ---: | ---: |
-| Paketlenmiş onaylı Türkçe→TİD cümlesi | 0 | Her kayıt iki bağımsız akıcı TİD değerlendiricisinin onayını taşımalı |
-| Onaylı üretken aktarım kalıbı | 0 | Her dilbilgisi özelliği ve TİD karşılığı ayrıca incelenmeli |
-| Manifestte gösterim medyası | 0 | Her varlık için kanıtlı lisans, SHA-256 ve zamanlı gloss/non-manual anotasyonu |
-| Ayrılmış held-out değerlendirme cümlesi | 0 / 300 | En az 300 cümle, içerik geliştirmede kullanılmamış kümeden |
-| İnceleme yapan akıcı TİD değerlendiricisi | 0 / 2 | İki bağımsız inceleme; görüş ayrılığında üçüncü hakem |
-| İki değerlendiricinin kabul ettiği sonuç | Ölçülmedi | Uzlaştırma sonrası en az %90 kabul |
-| Held-out insan cümle çevirisi sonucu | **Henüz değerlendirme yapılmadı** | Kabul, ret ve alt küme sonuçları yayımlanmalı |
-| Fiziksel Android Chrome kontrolü | Yapılmadı | HTTPS temiz kurulum, çevrimdışı, erişilebilirlik ve kullanıcı akışı |
+| İzinli held-out cümle/klip | En az 300 | 0 |
+| Kişi ayrık işaretleyici | En az 20 kişi | 0 |
+| Bağımsız akıcı TİD incelemesi | İki bağımsız değerlendirici | 0 |
+| Türkçe anlam kabulü | En az %90 | Ölçülmedi |
+| Destek dışı yanlış kabul | En fazla %5 | Ölçülmedi |
+| Yüz yüze kullanım | En az 30 oturum | 0 |
+| Hedef Android ölçümü | Doğruluk, gecikme ve erişilebilirlik | Yapılmadı |
 
-`Sen iyisin` için biçimbilim çözümlemesi `iyi` yüklemini ve ikinci tekil kişiyi tutar. Bu raporda bu cümle için onaylı TİD ifadesi, hareket varlığı veya insan kabul sonucu yoktur; dağıtım paketi cümleyi desteklenmeyen olarak tutar. Benzer şekilde testlerde kullanılan yapay reviewer kodları gerçek değerlendirici değildir.
+Bu kapı, kişi, iyelik, olumsuzluk, soru ve zaman alt kümeleri ayrı raporlanarak uygulanacaktır. Otomatik testler ve geliştirici incelemesi insan dil değerlendirmesi yerine sayılmaz.
 
-Karakter modeli `public/assets/avatar/rain.glb` için yeniden dağıtım hakkı ayrıca doğrulanmamıştır. TİD medya listesi boş olsa da bu varlık hakkı kamuya açık dağıtımı engellemeye devam eder.
+## Varlıklar
 
-## 300 cümlelik held-out değerlendirme
-
-Şu an değerlendirme kümesi toplanmamış ve incelenmemiştir. Yeni değerlendirme sürümü; kişi, olumsuzluk, soru, zaman, iyelik ve çekim biçimlerini dengeli kapsamalı; yinelenen/yazım varyantlı cümleleri aynı bölmede tutmalı; geliştirmede görünmeyen cümlelerden ayrılmalıdır. Cümle başına çıktı, çözümleme, TİD karşılığı ve medya kimliği özel inceleme kaydında izlenir. Depoya yalnızca kimliksiz toplu sayımlar ve kişiyi tanımlamayan kaynak kimlikleri eklenir.
-
-İki bağımsız akıcı TİD değerlendiricisi her cümlenin anlamını ayrı ayrı puanlar. Görüş ayrılıkları üçüncü hakem tarafından karara bağlanır. Her cümle için kişi, olumsuzluk, soru, zaman, iyelik ve çekim alt kümesi; kabul/ret, destek dışı ret ve yanlış kabul ayrı raporlanır. Sonuç eşiği, anlaşmazlık uzlaştırmasından sonra cümlelerin en az %90'ının anlamca kabul edilebilir bulunmasıdır. Eşik sağlanmazsa içerik sürümü yayımlanmaz ve yeni bir held-out küme gerekir.
-
-## Gösterim, güvenlik ve çevrimdışı kapıları
-
-- Desteklenmeyen veya belirsiz cümleler hiç medya segmenti döndürmemeli ve hiçbir durumda oynatılmamalı.
-- Oynatılabilir her cümle iki bağımsız dil incelemesi ve varsa üçüncü hakem sonucuna bağlı olmalı.
-- Her klip veya avatar animasyonu için lisans kaynağı, yeniden dağıtım izni, atıf, SHA-256, süre, gloss hizası ve non-manual zaman çizelgesi doğrulanmalı.
-- Medya yalnızca aynı kaynaklı, manifestte listelenmiş ve dosya karması doğrulanmışsa önbelleğe alınmalı. Ham kamera ve katılımcı kayıtları dağıtım paketine veya önbelleğe girmemeli.
-- Android Chrome'da metni gözden geçirme/onaylama, oynatma/durdurma, hata/yeniden deneme, izin reddi, ekran okuyucu ve çevrimdışı davranış fiziksel cihazda denenmeli.
-
-## Karar
-
-Türkçe→TİD arayüzü ve aktarım yazılımı bulunmaktadır; gerçek içerik ve insan değerlendirme kapıları **geçilmemiştir**. Ürünü “TİD cümlelerini çevirir” diye sunmayın. Yayın ancak yukarıdaki kanıtlar yeni içerik sürümü ve bu raporla kayda geçirildikten sonra yeniden değerlendirilebilir.
+`saved-poses.json` SignBridge MIT kaynağından gelir. Yeniden dağıtım hakkı belgelenmeyen `rain.glb` site paketinde bulunmaz; bunun yerine basit bir prosedürel iskelet kullanılır. MediaPipe Tasks Vision 1.0.1, ONNX Runtime Web 1.30.0 ve Three.js lisans bildirimleri kamu paketindedir.
