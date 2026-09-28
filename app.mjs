@@ -17,6 +17,7 @@ import { createTidDisplayPlan } from './tid-display-plan.mjs';
 import { renderLetterCards } from './letter-cards.mjs';
 import { createAppStateMachine } from './app-state.mjs';
 import { createMediaCaptureRegistry } from './media-capture-registry.mjs';
+import { requestCameraWithTimeout, cameraStartMessage } from './camera-permission.mjs';
 
 const elements = {
   networkDot: document.querySelector('#network-dot'),
@@ -85,6 +86,7 @@ let recognition;
 let speechErrorMessage = '';
 let listening = false;
 let recognitionBase = '';
+let cancelSpeechStartup = () => {};
 let avatar;
 let translationResources;
 let translationPlayer;
@@ -143,6 +145,35 @@ function initializePrivacyModes() {
       elements.pwaStatus.hidden = false;
       if (appState.getState() !== 'idle') appState.transition('idle');
     },
+    onSuspend: () => {
+      cancelSpeechStartup();
+      try { recognition?.abort?.(); } catch { /* speech may already be closed */ }
+      listening = false;
+      setListeningState(false, 'Sekme arka plana geçti; mikrofon kapatıldı. Yeniden başlatabilirsiniz.');
+      activeRecognitionController?.abort('page_hidden');
+      activeRecognitionController = null;
+      landmarkRuntime?.stopCapture();
+      captureRegistry.cancel('camera');
+      captureRegistry.cancel('teaching');
+      stopMediaStream(activeCameraStream);
+      stopMediaStream(activeTeachingStream);
+      activeCameraStream = null;
+      activeTeachingStream = null;
+      teachingCapturePending = false;
+      discardMediaRecording();
+      capturedFrames = [];
+      recordedChunks = [];
+      cloudClip = null;
+      cloudSession.clearKey();
+      elements.cameraPreview.pause?.();
+      elements.cameraPreview.srcObject = null;
+      elements.cameraPreview.hidden = true;
+      if (appState.getState() !== 'idle') appState.transition('idle');
+      elements.cameraStatus.textContent = 'Sekme arka plana geçtiği için kamera kapatıldı. Geri döndüğünüzde yeniden açabilirsiniz.';
+      elements.cloudKeyStatus.textContent = 'Sekme arka plana geçtiği için bulut anahtarı temizlendi.';
+      refreshCameraControls();
+      refreshTeachingControls();
+    },
   });
   elements.modeInputs.forEach((input) => input.addEventListener('change', () => {
     if (input.checked) privacyController.setMode(input.value);
@@ -166,6 +197,7 @@ function initializePrivacyModes() {
     elements.cloudKeyStatus.textContent = 'Bulut anahtarı temizlendi.';
   });
   privacyController.registerDisposer(() => {
+    cancelSpeechStartup();
     try { recognition?.abort?.(); } catch { /* recognition may already be closed */ }
     globalThis.speechSynthesis?.cancel?.();
     activeRecognitionController?.abort('page_hidden');
@@ -225,8 +257,12 @@ function initializeSpeechRecognition() {
   recognition.lang = 'tr-TR';
   recognition.continuous = true;
   recognition.interimResults = true;
+  let startTimer = null;
+  const clearStartTimer = () => { if (startTimer) clearTimeout(startTimer); startTimer = null; };
+  cancelSpeechStartup = clearStartTimer;
 
   recognition.addEventListener('start', () => {
+    clearStartTimer();
     speechErrorMessage = '';
     setListeningState(true, 'Dinleniyor…');
   });
@@ -242,8 +278,12 @@ function initializeSpeechRecognition() {
     elements.heardText.value = [recognitionBase, interimText.trim()].filter(Boolean).join(' ');
     elements.heardText.dispatchEvent(new Event('input', { bubbles: true }));
   });
-  recognition.addEventListener('end', () => setListeningState(false, speechErrorMessage || 'Hazır'));
+  recognition.addEventListener('end', () => {
+    clearStartTimer();
+    setListeningState(false, speechErrorMessage || 'Hazır');
+  });
   recognition.addEventListener('error', (event) => {
+    clearStartTimer();
     const messages = {
       'not-allowed': 'Mikrofon izni verilmedi. İzin verin veya metni elle yazın.',
       'service-not-allowed': 'Tarayıcı konuşma hizmetine izin vermedi. Metni elle yazabilirsiniz.',
@@ -256,14 +296,29 @@ function initializeSpeechRecognition() {
 
   elements.micButton.addEventListener('click', () => {
     if (listening) {
-      recognition.stop();
+      clearStartTimer();
+      try { recognition.stop(); } catch { recognition.abort(); }
+      setListeningState(false, 'Dinleme durduruldu.');
       return;
     }
     recognitionBase = elements.heardText.value.trim();
     try {
+      setListeningState(true, 'Mikrofon açılıyor…');
+      startTimer = setTimeout(() => {
+        startTimer = null;
+        speechErrorMessage = 'Konuşma tanıma yanıt vermedi. Tarayıcı izinlerini kontrol edin veya metni elle yazın.';
+        try { recognition.abort(); } catch { /* browser may have already closed speech */ }
+        setListeningState(false, speechErrorMessage);
+      }, 10000);
       recognition.start();
-    } catch {
-      setListeningState(false, 'Mikrofon yeniden hazırlanıyor.');
+    } catch (error) {
+      clearStartTimer();
+      console.error('speech_start_failed', error?.name, error?.message);
+      setListeningState(false, error?.name === 'NotAllowedError'
+        ? 'Mikrofon izni verilmedi. Tarayıcı izinlerini açın veya metni elle yazın.'
+        : error?.name === 'InvalidStateError'
+          ? 'Mikrofon işlemi zaten açık. Birkaç saniye sonra yeniden deneyin.'
+          : 'Bu tarayıcı konuşma tanımayı başlatamadı. Metni elle yazabilirsiniz.');
     }
   });
 }
@@ -598,14 +653,17 @@ async function initializeCameraTools() {
     appState.transition('requesting-permission');
     refreshCameraControls();
     elements.cameraStatus.textContent = 'Kamera izni bekleniyor…';
+    let cameraStage = 'getUserMedia';
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: 'user', width: { ideal: 960 }, height: { ideal: 720 } } });
+      const stream = await requestCameraWithTimeout(navigator.mediaDevices, { audio: false, video: { facingMode: 'user', width: { ideal: 960 }, height: { ideal: 720 } } });
       if (!captureRegistry.accept('camera', requestToken, stream)) return;
+      cameraStage = 'preview';
       activeCameraStream = stream;
       elements.cameraPreview.srcObject = activeCameraStream;
       elements.cameraPreview.hidden = false;
       await elements.cameraPreview.play();
       if (!captureRegistry.isCurrent('camera', requestToken)) return;
+      cameraStage = 'landmarks';
       capturedFrames = [];
       cloudClip = null;
       recordedChunks = [];
@@ -638,13 +696,14 @@ async function initializeCameraTools() {
       }
       appState.transition('capturing');
       elements.cameraStatus.textContent = 'İşaretinizi yapın, sonra “İşareti bitir” düğmesine basın.';
-    } catch {
+    } catch (error) {
       const wasCancelled = privacyDisposed || !captureRegistry.isCurrent('camera', requestToken);
       captureRegistry.cancel('camera');
       stopStream();
       if (wasCancelled) return;
       appState.transition('error');
-      elements.cameraStatus.textContent = 'Kamera açılamadı veya izin verilmedi.';
+      console.error('camera_start_failed', cameraStage, error?.name, error?.message);
+      elements.cameraStatus.textContent = cameraStartMessage(cameraStage, error);
     }
     refreshCameraControls();
   });
@@ -711,7 +770,7 @@ async function initializeCameraTools() {
     elements.teachingStatus.textContent = 'Kamera izni bekleniyor; işareti doğal hızınızda yapın…';
     let stream;
     try {
-      stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: 'user' } });
+      stream = await requestCameraWithTimeout(navigator.mediaDevices, { audio: false, video: { facingMode: 'user' } });
       if (!captureRegistry.accept('teaching', requestToken, stream)) return;
       activeTeachingStream = stream;
       elements.cameraPreview.srcObject = stream;
@@ -726,9 +785,9 @@ async function initializeCameraTools() {
         elements.teachingCustomText.value = '';
       }
       elements.teachingStatus.textContent = `${personalPhraseText(label) ?? label}: ${result.sampleCount} / ${result.minSamples} örnek · kalite ${result.quality}${result.ready ? ' · tanımaya hazır' : ''}`;
-    } catch {
+    } catch (error) {
       if (captureRegistry.isCurrent('teaching', requestToken) && !privacyDisposed) {
-        elements.teachingStatus.textContent = 'Örnek kaydedilemedi. Ellerin kadrajda olduğundan ve kamera izninden emin olun.';
+        elements.teachingStatus.textContent = cameraStartMessage('getUserMedia', error);
       }
     } finally {
       stopStream(stream);
@@ -775,7 +834,7 @@ async function initializeCameraTools() {
     personalTrainer = createPersonalTrainer({ runtime: landmarkRuntime, store: personalStore, minSamples: 3 });
     personalBackend = createPersonalRecognitionBackend({ store: personalStore });
     runtimeReady = true;
-    elements.cameraStatus.textContent = 'Kişisel cihaz içi kamera tanıma hazır. Önce bir işareti üç kez öğretin.';
+    elements.cameraStatus.textContent = 'Kamera hareket izleme hazır. Tanıma için önce bir işareti üç kez öğretin; sözlük pozları kameradan tanınan işaretler değildir.';
     populateTeachingLabels();
   } catch (error) {
     console.error('camera_runtime_init_failed', error?.code ?? error?.message, JSON.stringify(error?.detail ?? null));

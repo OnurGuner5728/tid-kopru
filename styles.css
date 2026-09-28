@@ -96,6 +96,7 @@ textarea:focus, input:focus { outline: none; border-color: var(--teal); box-shad
 .button:active, .icon-button:active { transform: translateY(1px); }
 .button:disabled { cursor: not-allowed; opacity: .48; }
 .button { display: inline-flex; align-items: center; justify-content: center; gap: 9px; padding: 0 18px; }
+.button[hidden] { display: none; }
 .button svg { width: 20px; fill: currentColor; }
 .primary { background: var(--teal); color: white; }
 .primary.listening { background: var(--coral); }
@@ -139,6 +140,7 @@ textarea:focus, input:focus { outline: none; border-color: var(--teal); box-shad
 .sign-copy { padding: 52px 46px; }
 .eyebrow.light { color: var(--lime); }
 .sign-copy > p:not(.eyebrow) { max-width: 520px; color: rgba(255,255,255,.66); line-height: 1.65; }
+.dictionary-note a { color: var(--lime); text-decoration: underline; text-underline-offset: 3px; }
 .light-label { margin: 22px 0 8px; color: rgba(255,255,255,.84); }
 .translation-output { margin-top: 28px; padding: 20px; border: 1px solid rgba(255,255,255,.12); border-radius: 18px; background: rgba(255,255,255,.045); }
 .translation-output .light-label:first-child { margin-top: 0; }
